@@ -32,6 +32,12 @@ class Place(models.Model):
     def __str__(self):
         return self.name
 
+#3-1. 장소 사진 모델
+class PlaceImage(models.Model):
+    place = models.ForeignKey(Place, on_delete=models.CASCADE, related_name='images')
+    image_url = models.URLField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+
 # 4. 리뷰 모델
 class Review(models.Model):
     place = models.ForeignKey(Place, on_delete=models.CASCADE, related_name='reviews')
