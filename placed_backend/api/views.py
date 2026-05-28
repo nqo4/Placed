@@ -114,9 +114,23 @@ class SearchView(APIView):
         if not keyword:
             return Response([], status=status.HTTP_200_OK)
             
-        places = Place.objects.filter(name__icontains=keyword)
-        serializer = PlaceSerializer(places, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        places = Place.objects.filter(name__icontains=keyword) | Place.objects.filter(address__icontains=keyword)
+        
+        results = []
+        for place in places:
+            from .models import PlaceImage 
+            images = PlaceImage.objects.filter(place=place).values_list('image_url', flat=True)
+            
+            results.append({
+                'id': place.id,
+                'name': place.name,
+                'address': place.address,
+                'description': place.description,
+                'images': list(images),
+                'created_at': place.created_at.strftime('%Y-%m-%d')
+            })
+            
+        return Response(results, status=status.HTTP_200_OK)
 
 # --- Legacy/Analysis View (Keeping for backward compatibility or admin use) ---
 

@@ -10,16 +10,31 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'phone_number']
 
 class SignupSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(required=False, write_only=True)
+    username = serializers.CharField(required=False)
     password = serializers.CharField(write_only=True)
+    email = serializers.EmailField(required=False, allow_blank=True, allow_null=True)
+    phone_number = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = User
-        fields = ['username', 'password', 'email', 'phone_number']
+        fields = ['id', 'username', 'password', 'email', 'phone_number']
 
     def create(self, validated_data):
+        user_id = validated_data.get('id')
+        if not user_id:
+            user_id = validated_data.get('username')
+            
+        if not user_id:
+            user_id = validated_data.get('email', '').split('@')[0]
+
+        user_email = validated_data.get('email')
+        if not user_email and '@' in str(user_id):
+            user_email = user_id
+
         user = User.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data.get('email', ''),
+            username=user_id,
+            email=user_email,
             password=validated_data['password'],
             phone_number=validated_data.get('phone_number', '')
         )
