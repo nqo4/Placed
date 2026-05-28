@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Place, Review, Inquiry, PlaceAnalysis
+from .models import Place, PlaceImage, Review, Inquiry, PlaceAnalysis
 
 User = get_user_model()
 
@@ -48,9 +48,21 @@ class InquirySerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'category', 'message', 'created_at']
 
 class PlaceSerializer(serializers.ModelSerializer):
+    images = serializers.SlugRelatedField(
+        many=True,
+        read_only=True,
+        slug_field='image_url'
+    )
+    
     class Meta:
         model = Place
-        fields = '__all__'
+        fields =['id',
+                 'name',
+                 'description',
+                 'image_url', 
+                 'address', 
+                 'created_at', 
+                 'images']
 
 class ReviewSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
