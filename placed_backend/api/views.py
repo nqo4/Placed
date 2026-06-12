@@ -3,13 +3,15 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model, authenticate
 from django.shortcuts import get_object_or_404
-from rest_framework_simplejwt.tokens import RefreshToken  # JWT 사용 가정 (없으면 기본 토큰으로 변경 가능)
+from rest_framework_simplejwt.tokens import RefreshToken 
+
 from .models import PlaceAnalysis, Place, Review, Inquiry
 from .serializers import (
     UserSerializer, SignupSerializer, PlaceSerializer, 
     ReviewSerializer, InquirySerializer
 )
-from .ai_service import analyze_review, generate_response
+# [수정 사항 1] 서비스 파일명을 범수님이 사용 중인 gemini_service로 정확히 변경했습니다.
+from .gemini_service import analyze_review, generate_response
 from django.conf import settings
 
 User = get_user_model()
@@ -18,7 +20,7 @@ User = get_user_model()
 
 class CheckIDView(APIView):
     def get(self, request):
-        username = request.query_params.get('id') # Frontend sends ?id=...
+        username = request.query_params.get('id')
         if not username:
              return Response({'message': '아이디를 입력해주세요.'}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -40,9 +42,6 @@ class LoginView(APIView):
         
         user = authenticate(username=username, password=password)
         if user:
-            # Simple JWT Token issuance (Install djangorestframework-simplejwt if needed)
-            # For now, mocking token response or using simple random string if JWT not setup
-            # But let's assume we want to return a token.
             token = "sample_token_12345" 
             return Response({
                 'token': token,
@@ -121,12 +120,29 @@ class SearchView(APIView):
             from .models import PlaceImage 
             images = PlaceImage.objects.filter(place=place).values_list('image_url', flat=True)
             
+            # [수정 사항 2] SearchView 내부에 실시간 제미나이 광고 분류 엔진을 이식했습니다.
+            latest_review = Review.objects.filter(place=place).first()
+            
+            non_ad_percent = 100
+            ai_reason = "등록된 리뷰가 없어 검증을 생략하고 청정 장소로 분류합니다."
+            
+            if latest_review and latest_review.content:
+                # gemini_service에 있는 함수를 빌려와 분석 결과를 딕셔너리로 받습니다.
+                ai_result = analyze_review(latest_review.content)
+                
+                # 범수님이 세팅하신 non_ad_probability 키값을 정확히 매핑하여 가져옵니다.
+                non_ad_percent = ai_result.get("non_ad_probability", 50)
+                ai_reason = ai_result.get("reason", "AI 검증 완료")
+            
             results.append({
                 'id': place.id,
                 'name': place.name,
                 'address': place.address,
                 'description': place.description,
                 'images': list(images),
+                # [AI 결합 완료] 선민님 프론트엔드로 넘어갈 핵심 변수 두 개를 보강했습니다.
+                'non_ad_probability': non_ad_percent,
+                'ai_filtering_reason': ai_reason,
                 'created_at': place.created_at.strftime('%Y-%m-%d')
             })
             
@@ -148,11 +164,12 @@ class AnalyzePlaceView(APIView):
             name=name,
             content_text=content,
             is_ad=ai_result.get('is_ad', False),
-            ad_probability=ai_result.get('probability', 0),
+            # 하단 레거시 뷰에서도 바뀐 키값에 대응하도록 유연하게 안전장치를 추가해두었습니다.
+            ad_probability=ai_result.get('probability', 100 - ai_result.get('non_ad_probability', 0)),
             ai_summary=ai_result.get('reason', '')
         )
         
-        place.save() # ID 반환을 위해 저장이 필요할 수 있음 (수정됨)
+        place.save() 
         
         return Response({
             'id': place.id,
