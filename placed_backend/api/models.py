@@ -13,7 +13,7 @@ class PlaceAnalysis(models.Model):
     
     # AI 분석 결과
     is_ad = models.BooleanField(default=False)      # 광고 여부
-    ad_probability = models.FloatField(default=0.0) # 광고 확률
+    ad_probability = models.IntegerField(verbose_name='non ad probability', default=50) # 광고가 아닐 확률
     ai_summary = models.TextField(blank=True)       # AI 분석 이유
     
     created_at = models.DateTimeField(auto_now_add=True)
@@ -28,6 +28,7 @@ class Place(models.Model):
     image_url = models.TextField(blank=True, null=True, help_text="장소 대표 이미지의 URL 주소.")
     address = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    
 
     def __str__(self):
         return self.name

@@ -117,22 +117,31 @@ class SearchView(APIView):
         
         results = []
         for place in places:
-            from .models import PlaceImage 
+            from .models import PlaceImage, PlaceAnalysis
             images = PlaceImage.objects.filter(place=place).values_list('image_url', flat=True)
-            
-            # [수정 사항 2] SearchView 내부에 실시간 제미나이 광고 분류 엔진을 이식했습니다.
             latest_review = Review.objects.filter(place=place).first()
             
             non_ad_percent = 100
-            ai_reason = "등록된 리뷰가 없어 검증을 생략하고 청정 장소로 분류합니다."
+            ai_reason = "등록된 리뷰가 없어 검증을 생략합니다."
             
             if latest_review and latest_review.content:
-                # gemini_service에 있는 함수를 빌려와 분석 결과를 딕셔너리로 받습니다.
-                ai_result = analyze_review(latest_review.content)
+                existing_analysis = PlaceAnalysis.objects.filter(name=place.name).first()
                 
-                # 범수님이 세팅하신 non_ad_probability 키값을 정확히 매핑하여 가져옵니다.
-                non_ad_percent = ai_result.get("non_ad_probability", 50)
-                ai_reason = ai_result.get("reason", "AI 검증 완료")
+                if existing_analysis:
+                    non_ad_percent = 100 - existing_analysis.ad_probability
+                    ai_reason = existing_analysis.ai_summary + " (DB에 저장된 결과 재사용)"
+                else:
+                    ai_result = analyze_review(latest_review.content)
+                    non_ad_percent = ai_result.get("non_ad_probability", 50)
+                    ai_reason = ai_result.get("reason", "AI 신규 검증 완료")
+                    
+                    PlaceAnalysis.objects.create(
+                        name=place.name,
+                        content_text=latest_review.content,
+                        is_ad=ai_result.get('is_ad', False),
+                        ad_probability=100 - non_ad_percent,
+                        ai_summary=ai_reason
+                    )
             
             results.append({
                 'id': place.id,
@@ -140,14 +149,13 @@ class SearchView(APIView):
                 'address': place.address,
                 'description': place.description,
                 'images': list(images),
-                # [AI 결합 완료] 선민님 프론트엔드로 넘어갈 핵심 변수 두 개를 보강했습니다.
                 'non_ad_probability': non_ad_percent,
                 'ai_filtering_reason': ai_reason,
                 'created_at': place.created_at.strftime('%Y-%m-%d')
             })
             
         return Response(results, status=status.HTTP_200_OK)
-
+    
 # --- Legacy/Analysis View (Keeping for backward compatibility or admin use) ---
 
 class AnalyzePlaceView(APIView):
@@ -164,7 +172,6 @@ class AnalyzePlaceView(APIView):
             name=name,
             content_text=content,
             is_ad=ai_result.get('is_ad', False),
-            # 하단 레거시 뷰에서도 바뀐 키값에 대응하도록 유연하게 안전장치를 추가해두었습니다.
             ad_probability=ai_result.get('probability', 100 - ai_result.get('non_ad_probability', 0)),
             ai_summary=ai_result.get('reason', '')
         )
