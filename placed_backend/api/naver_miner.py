@@ -38,7 +38,7 @@ def mine_from_naver(search_keyword):
 
     print(f"Starting Auto AI-Analysis Data Pipeline for [{search_keyword}]...")
     
-    display_count = 15
+    display_count = 50
     local_url = f"https://openapi.naver.com/v1/search/local.json?query={search_keyword}&display={display_count}"
     
     local_response = requests.get(local_url, headers=headers)
@@ -113,21 +113,21 @@ def mine_from_naver(search_keyword):
                 rating=5
             )
 
-            print(f"   [AI] Analyzing ad probability for [{exact_place_name}]...")
+            print(f"   [AI] Analyzing trustworthiness for [{exact_place_name}]...")
             ai_result = analyze_review(final_giant_content)
             
-            non_ad_percent = ai_result.get("non_ad_probability", 50)
+            trust_score = ai_result.get("Reliability", 50)
             
             PlaceAnalysis.objects.update_or_create(
                 name=exact_place_name,
                 defaults={
                     'content_text': final_giant_content[:2000],
                     'is_ad': ai_result.get('is_ad', False),
-                    'ad_probability': non_ad_percent, 
+                    'ad_probability': trust_score, 
                     'ai_summary': ai_result.get('reason', '분석 완료')
                 }
             )
-            print(f"   [DB Saved] PlaceAnalysis 등록 완료 -> 광고가 아닐 확률: {non_ad_percent}%")
+            print(f"   [DB Saved] PlaceAnalysis 등록 완료 -> 신뢰도: {trust_score}%")
             
         print("Success: Finished high-volume conditional data mining & AI analysis pipeline.")
     else:

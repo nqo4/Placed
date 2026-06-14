@@ -13,8 +13,8 @@ class PlaceAnalysis(models.Model):
     
     # AI 분석 결과
     is_ad = models.BooleanField(default=False)      # 광고 여부
-    ad_probability = models.IntegerField(verbose_name='non ad probability', default=50) # 광고가 아닐 확률
-    ai_summary = models.TextField(blank=True)       # AI 분석 이유
+    ad_probability = models.IntegerField(verbose_name='Reliability', default=50) # 광고가 아닐 확률
+    ai_summary = models.TextField()       # AI 분석 이유
     
     created_at = models.DateTimeField(auto_now_add=True)
 
