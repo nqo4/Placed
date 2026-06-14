@@ -78,6 +78,21 @@ class PlaceDetailView(generics.RetrieveAPIView):
     serializer_class = PlaceSerializer
     permission_classes = [permissions.AllowAny]
 
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        data = serializer.data
+
+        analysis = PlaceAnalysis.objects.filter(name=instance.name).first()
+        if analysis:
+            data['non_ad_probability'] = analysis.ad_probability
+            data['ai_filtering_reason'] = analysis.ai_summary
+        else:
+            data['non_ad_probability'] = None
+            data['ai_filtering_reason'] = None
+
+        return Response(data)
+
 class PlaceReviewsView(generics.ListAPIView):
     serializer_class = ReviewSerializer
     permission_classes = [permissions.AllowAny]
