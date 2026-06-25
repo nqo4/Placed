@@ -3,7 +3,11 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model, authenticate
 from django.shortcuts import get_object_or_404
-from rest_framework_simplejwt.tokens import RefreshToken 
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework import status
+from .documents import PlaceDocument
+from django.apps import apps
+import json
 
 from .models import PlaceAnalysis, Place, Review, Inquiry
 from .serializers import (
@@ -212,3 +216,77 @@ class AISearchView(APIView):
 
         answer = generate_response(query)
         return Response({'answer': answer}, status=status.HTTP_200_OK)
+    
+
+class ElasticSearchPlaceView(APIView):
+    def get(self, request):
+        query_string = request.query_params.get('search', '').strip()
+
+        if not query_string:
+            return Response({"error": "검색어를 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            search_results = PlaceDocument.search().query(
+                "multi_match",
+                query=query_string,
+                fields=['name', 'description', 'address']
+            )
+
+            hits = search_results[:100].execute()
+
+            response_data = []
+            for hit in hits:
+                place_id = int(hit.meta.id) if hasattr(hit, 'meta') else hit.id
+                db_place = Place.objects.filter(id=place_id).first()
+                
+                real_image_url = ""
+                
+                if db_place:
+                    image_manager = None
+                    if hasattr(db_place, 'images'):
+                        image_manager = db_place.images
+                    elif hasattr(db_place, 'placeimage_set'):
+                        image_manager = db_place.placeimage_set
+                    elif hasattr(db_place, 'place_images'):
+                        image_manager = db_place.place_images
+
+                    if image_manager:
+                        first_image_obj = image_manager.all().first()
+                        if first_image_obj:
+                            for attr in ['url', 'image', 'image_url', 'file']:
+                                if hasattr(first_image_obj, attr):
+                                    val = getattr(first_image_obj, attr)
+                                    if val:
+                                        real_image_url = val.url if hasattr(val, 'url') else str(val)
+                                        break
+                    
+                    if not real_image_url and getattr(db_place, 'image_url', ''):
+                        raw_images = db_place.image_url.strip()
+                        if raw_images.startswith('[') and raw_images.endswith(']'):
+                            try:
+                                img_list = json.loads(raw_images)
+                                if img_list: real_image_url = img_list[0]
+                            except: pass
+                        elif '\n' in raw_images or ',' in raw_images:
+                            dlm = '\n' if '\n' in raw_images else ','
+                            img_list = [i.strip() for i in raw_images.split(dlm) if i.strip()]
+                            if img_list: real_image_url = img_list[0]
+                        else:
+                            real_image_url = raw_images
+
+                if not real_image_url:
+                    real_image_url = "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?q=80&w=500"
+
+                response_data.append({
+                    "id": place_id,
+                    "name": hit.name,
+                    "address": hit.address,
+                    "description": hit.description,
+                    "created_at": getattr(hit, 'created_at', ''),
+                    "image_url": real_image_url,
+                })
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": f"Search server error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

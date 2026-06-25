@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.contrib.auth import get_user_model
 
 # 1. 사용자 모델
 class User(AbstractUser):
@@ -42,10 +43,11 @@ class PlaceImage(models.Model):
 # 4. 리뷰 모델
 class Review(models.Model):
     place = models.ForeignKey(Place, on_delete=models.CASCADE, related_name='reviews')
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
+    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE) # 이제 정상 작동합니다.
     content = models.TextField()
-    hashtags = models.TextField(blank=True, null=True, help_text="해시태그들을 저장합니다.")
+    hashtags = models.CharField(max_length=255, blank=True, null=True)
     rating = models.IntegerField(default=5)
+    url = models.URLField(unique=True, max_length=500, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

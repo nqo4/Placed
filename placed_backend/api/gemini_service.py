@@ -8,7 +8,7 @@ def analyze_review(text):
     settings.py에 정의된 GEMINI_MODEL_NAME을 사용하여 광고 여부 분석
     """
     try:
-        genai.configure(api_key="AQ.Ab8RN6ILyowL6tMieJQjsVADWck3MKf7-5bqj_GgpNumTn-0MQ")
+        genai.configure(api_key="**제미나이API KEY**")
         
         model_name = getattr(settings, 'GEMINI_MODEL_NAME', 'gemini-1.5-flash')
         model = genai.GenerativeModel(model_name)

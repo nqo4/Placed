@@ -3,7 +3,7 @@ from .views import (
     CheckIDView, LoginView, SignupView,
     CreateInquiryView, MyInquiriesView, InquiryDetailView,
     PlaceDetailView, PlaceReviewsView, CreateReviewView, MyReviewsView,
-    SearchView, AnalyzePlaceView, AISearchView
+    SearchView, AnalyzePlaceView, AISearchView, ElasticSearchPlaceView,
 )
 
 urlpatterns = [
@@ -29,4 +29,7 @@ urlpatterns = [
 
     # Legacy / Analysis
     path('analyze/', AnalyzePlaceView.as_view(), name='analyze'),
+
+    #Elasticsearch
+    path('search/elastic/', ElasticSearchPlaceView.as_view(), name='elastic-search'),
 ]

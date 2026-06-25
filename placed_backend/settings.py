@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_elasticsearch_dsl',
 
     # [추가된 라이브러리]
     'rest_framework',       # API 구축용 프레임워크
@@ -145,3 +146,10 @@ AUTH_USER_MODEL = 'api.User'
 GEMINI_API_KEY = "AIzaSyCnTi-Jz11HJ8Dx88-Tev8RWi1QIA_BijQ"
 
 GEMINI_MODEL_NAME = "gemini-2.5-flash-lite"
+
+ELASTICSEARCH_DSL = {
+    'default': {
+        'hosts': 'http://localhost:9200',
+        'verify_certs': False,
+    },
+}
