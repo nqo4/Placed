@@ -62,7 +62,7 @@ function PlaceDetail() {
 
   const parseDescription = (text) => {
     if (!text) return [];
-    const parts = text.split(/(?=\[)/).filter(p => p.trim());
+    const parts = text.split(/\n\s*\n/).filter(p => p.trim());
     return parts.map(part => {
       const match = part.match(/^\[([^\]]+)\]([\s\S]*)/);
       if (match) return { title: match[1].trim(), content: match[2].trim() };
