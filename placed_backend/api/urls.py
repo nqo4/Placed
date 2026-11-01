@@ -4,6 +4,8 @@ from .views import (
     CreateInquiryView, MyInquiriesView, InquiryDetailView,
     PlaceDetailView, PlaceReviewsView, CreateReviewView, MyReviewsView,
     SearchView, AnalyzePlaceView, AISearchView, ElasticSearchPlaceView,
+    AdminUserListView, AdminPlaceListView, AdminAnalysisListView,
+    AdminReviewListView, AdminInquiryListView,
 )
 
 urlpatterns = [
@@ -32,4 +34,11 @@ urlpatterns = [
 
     #Elasticsearch
     path('search/elastic/', ElasticSearchPlaceView.as_view(), name='elastic-search'),
+
+    # Admin
+    path('admin/users/', AdminUserListView.as_view(), name='admin-users'),
+    path('admin/places/', AdminPlaceListView.as_view(), name='admin-places'),
+    path('admin/analysis/', AdminAnalysisListView.as_view(), name='admin-analysis'),
+    path('admin/reviews/', AdminReviewListView.as_view(), name='admin-reviews'),
+    path('admin/inquiries/', AdminInquiryListView.as_view(), name='admin-inquiries'),
 ]

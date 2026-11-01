@@ -11,8 +11,9 @@ import json
 
 from .models import PlaceAnalysis, Place, Review, Inquiry
 from .serializers import (
-    UserSerializer, SignupSerializer, PlaceSerializer, 
-    ReviewSerializer, InquirySerializer
+    UserSerializer, SignupSerializer, PlaceSerializer,
+    ReviewSerializer, InquirySerializer,
+    AdminUserSerializer, PlaceAnalysisSerializer
 )
 # [수정 사항 1] 서비스 파일명을 범수님이 사용 중인 gemini_service로 정확히 변경했습니다.
 from .gemini_service import analyze_review, generate_response
@@ -46,9 +47,11 @@ class LoginView(APIView):
         
         user = authenticate(username=username, password=password)
         if user:
-            token = "sample_token_12345" 
+            refresh = RefreshToken.for_user(user)
+            token = str(refresh.access_token)
             return Response({
                 'token': token,
+                'is_staff': user.is_staff,
                 'user': UserSerializer(user).data
             }, status=status.HTTP_200_OK)
         return Response({'message': '아이디 또는 비밀번호가 일치하지 않습니다.'}, status=status.HTTP_401_UNAUTHORIZED)
@@ -217,6 +220,35 @@ class AISearchView(APIView):
         answer = generate_response(query)
         return Response({'answer': answer}, status=status.HTTP_200_OK)
     
+
+# --- Admin Views ---
+# 나중에 IsAdminUser로 바꾸기. 지금은 로컬 테스트용으로 AllowAny
+
+class AdminUserListView(generics.ListAPIView):
+    queryset = User.objects.all().order_by('-date_joined')
+    serializer_class = AdminUserSerializer
+    permission_classes = [permissions.AllowAny]
+
+class AdminPlaceListView(generics.ListAPIView):
+    queryset = Place.objects.all().order_by('-created_at')
+    serializer_class = PlaceSerializer
+    permission_classes = [permissions.AllowAny]
+
+class AdminAnalysisListView(generics.ListAPIView):
+    queryset = PlaceAnalysis.objects.all().order_by('-created_at')
+    serializer_class = PlaceAnalysisSerializer
+    permission_classes = [permissions.AllowAny]
+
+class AdminReviewListView(generics.ListAPIView):
+    queryset = Review.objects.all().order_by('-created_at')
+    serializer_class = ReviewSerializer
+    permission_classes = [permissions.AllowAny]
+
+class AdminInquiryListView(generics.ListAPIView):
+    queryset = Inquiry.objects.all().order_by('-created_at')
+    serializer_class = InquirySerializer
+    permission_classes = [permissions.AllowAny]
+
 
 class ElasticSearchPlaceView(APIView):
     def get(self, request):

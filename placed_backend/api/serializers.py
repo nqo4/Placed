@@ -71,3 +71,14 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = ['id', 'place', 'place_name', 'user', 'content', 'rating', 'created_at']
+
+# 관리자용 - is_staff, date_joined 포함
+class AdminUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'phone_number', 'is_staff', 'date_joined']
+
+class PlaceAnalysisSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PlaceAnalysis
+        fields = ['id', 'name', 'is_ad', 'ad_probability', 'ai_summary', 'created_at']

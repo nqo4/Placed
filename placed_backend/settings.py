@@ -147,6 +147,12 @@ GEMINI_API_KEY = "AIzaSyCnTi-Jz11HJ8Dx88-Tev8RWi1QIA_BijQ"
 
 GEMINI_MODEL_NAME = "gemini-2.5-flash-lite"
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+}
+
 ELASTICSEARCH_DSL = {
     'default': {
         'hosts': 'http://localhost:9200',
