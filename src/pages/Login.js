@@ -19,8 +19,13 @@ function Login() {
     try {
       const res = await loginUser(id, password);
       localStorage.setItem("token", res.data.token);
-      alert("로그인 성공!");
-      navigate("/main");
+      localStorage.setItem("is_admin", res.data.is_staff ? "true" : "false");
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+      if (res.data.is_staff) {
+        navigate("/admin");
+      } else {
+        navigate("/main");
+      }
     } catch (err) {
       console.error(err);
       alert("아이디 또는 비밀번호가 잘못되었습니다.");

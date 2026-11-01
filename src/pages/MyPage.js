@@ -7,9 +7,10 @@ import "../pages_CSS/MyPage.css";
 function MyPage() {
   const navigate = useNavigate();
 
+  const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
   const [userInfo, setUserInfo] = useState({
-    name: "사용자 (더미)",
-    email: "user@example.com (더미)",
+    name: savedUser.username || "사용자 (더미)",
+    email: savedUser.email || "user@example.com (더미)",
     newPassword: "",
     confirmPassword: "",
   });
@@ -59,15 +60,14 @@ function MyPage() {
             </div>
             <div className="profile-text">
               <p className="profile-name">{userInfo.name}</p>
-              <p className="profile-email">{userInfo.email}</p>
             </div>
           </div>
 
           <form className="settings-form" onSubmit={handleSave}>
             <div className="form-row">
               <div className="form-field">
-                <label>이메일</label>
-                <input type="email" value={userInfo.email} readOnly />
+                <label>아이디</label>
+                <input type="text" value={userInfo.email} readOnly />
               </div>
               <div className="form-field">
                 <label>이름</label>

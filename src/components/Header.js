@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import "./Header.css";
 
-function Header() {
+function Header({ hideNav = false }) {
   const navigate = useNavigate();
 
   return (
@@ -16,11 +16,13 @@ function Header() {
         <h1 className="logo-text">PLACED</h1>
       </div>
 
-      <nav className="header-nav">
-        <button onClick={() => navigate("/main")}>홈</button>
-        <button onClick={() => navigate("/my-places")}>내 장소</button>
-        <button onClick={() => navigate("/mypage")}>마이페이지</button>
-      </nav>
+      {!hideNav && (
+        <nav className="header-nav">
+          <button onClick={() => navigate("/main")}>홈</button>
+          <button onClick={() => navigate("/my-places")}>내 장소</button>
+          <button onClick={() => navigate("/mypage")}>마이페이지</button>
+        </nav>
+      )}
     </header>
   );
 }

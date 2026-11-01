@@ -11,38 +11,55 @@ function Signup() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [name, setName] = useState("");
+  const [toast, setToast] = useState({ msg: "", type: "" });
+
+  const showToast = (msg, type = "info") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast({ msg: "", type: "" }), 2500);
+  };
 
   const handleCheckDuplicate = async () => {
-    if (!id.trim()) return alert("아이디를 입력하세요!");
+    if (!id.trim()) return showToast("아이디를 입력하세요.", "error");
     try {
-      const res = await checkDuplicateId(id);  
+      const res = await checkDuplicateId(id);
       res.data.isAvailable
-        ? alert("사용 가능한 아이디입니다!")
-        : alert("이미 사용 중인 아이디입니다.");
+        ? showToast("사용 가능한 아이디입니다.", "success")
+        : showToast("이미 사용 중인 아이디입니다.", "error");
     } catch (err) {
       console.error(err);
-      alert("중복확인 중 오류가 발생했습니다.");
+      showToast("중복확인 중 오류가 발생했습니다.", "error");
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (password !== confirm) {
-      return alert("비밀번호가 일치하지 않습니다!");
+      return showToast("비밀번호가 일치하지 않습니다.", "error");
     }
 
     try {
       await signupUser(id, password, name);
-      alert("회원가입 완료! 로그인 페이지로 이동합니다.");
-      navigate("/login");
+      showToast("회원가입 완료!", "success");
+      setTimeout(() => navigate("/login"), 1500);
     } catch (err) {
       console.error(err);
-      alert("회원가입에 실패했습니다.");
+      showToast("회원가입에 실패했습니다.", "error");
     }
   };
 
   return (
     <>
+      {toast.msg && (
+        <div style={{
+          position: "fixed", top: "24px", left: "50%", transform: "translateX(-50%)",
+          background: toast.type === "success" ? "#28a745" : toast.type === "error" ? "#dc3545" : "#333",
+          color: "white", padding: "12px 28px", borderRadius: "30px",
+          fontSize: "0.9rem", fontWeight: 600, zIndex: 9999,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.15)"
+        }}>
+          {toast.msg}
+        </div>
+      )}
       <div className="signup-page">
         <div className="signup-card">
         <h1 className="placed-logo">PLACED</h1>

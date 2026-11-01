@@ -12,6 +12,7 @@ import PlaceDetail from "./pages/PlaceDetail";
 import MyReviews from "./pages/MyReviews";
 import MyPlaces from "./pages/MyPlaces";
 import MyPage from "./pages/MyPage";
+import Admin from "./pages/Admin";
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
         <Route path="/inquiry/:id" element={<InquiryDetail />} />
         <Route path="/place/:id" element={<PlaceDetail />} />
         <Route path="/reviews" element={<MyReviews />} />
+        <Route path="/admin" element={<Admin />} />
       </Routes>
     </Router>
   );

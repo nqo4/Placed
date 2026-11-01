@@ -13,7 +13,7 @@ function Contact() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (category === "문의 선택" || !message.trim()) {
+    if (!category || !message.trim()) {
       alert("문의 유형과 내용을 입력해주세요.");
       return;
     }
@@ -39,11 +39,10 @@ function Contact() {
 
         <form onSubmit={handleSubmit} className="contact-form">
           <select value={category} onChange={(e) => setCategory(e.target.value)}>
-            <option>문의 선택</option>
-            <option>오류 신고</option>
-            <option>기능 제안</option>
-            <option>계정 관련</option>
-            <option>기타</option>
+            <option value="">문의 선택</option>
+            <option value="account">계정 문의</option>
+            <option value="service">서비스 이용</option>
+            <option value="etc">기타</option>
           </select>
 
           <textarea
