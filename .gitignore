@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Django
+db.sqlite3
+media/
+staticfiles/
+
+# 환경변수 / 비밀키 (절대 커밋 금지)
+.env
+
+# 가상환경
+venv/
+.venv/
+env/
+
+# 에디터
+.vscode/
+.idea/
+
+# 프론트엔드는 별도 저장소(tjsals021127-wq/Placed)에서 관리
+Placed/
+node_modules/
+
+# 작업 산출물 / 내부 문서
+Claude outputs/
+어린이회관_Placed 개발 문서.docx
+
+# 구버전 백엔드 경로 (현재 구조는 루트의 api/)
+placed_backend/api/
+placed_backend/manage.py
+placed_backend/initial_data.json
