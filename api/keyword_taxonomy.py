@@ -60,7 +60,9 @@ def classify_place_type(place_category_tokens):
     'bar' 중 하나로 분류합니다. 여러 그룹의 토큰이 섞여 있으면 PLACE_TYPE_ORDER 순서대로
     먼저 매칭되는 그룹을 사용합니다. 어디에도 안 맞으면 None을 반환합니다.
     """
+    # "음식점>카페,디저트"처럼 한 단계에 쉼표로 묶인 업종도 각각 비교합니다.
+    tokens = {part.strip() for token in place_category_tokens for part in token.split(',')}
     for place_type in PLACE_TYPE_ORDER:
-        if place_category_tokens & PLACE_TYPE_CATEGORY_TOKENS[place_type]:
+        if tokens & PLACE_TYPE_CATEGORY_TOKENS[place_type]:
             return place_type
     return None

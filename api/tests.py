@@ -296,6 +296,18 @@ class RecommendTests(APITestCase):
         self.assertNotIn('이미본곳', names)
 
 
+class KeywordSearchLogTests(APITestCase):
+    def test_keyword_search_logs_only_authenticated_user(self):
+        url = reverse('elastic-search')
+        self.client.get(url, {'search': '봉명동'})
+        self.assertEqual(SearchLog.objects.count(), 0)
+
+        user = User.objects.create_user(username='searcher01', password='pw12345678')
+        self.client.force_authenticate(user=user)
+        self.client.get(url, {'search': '봉명동'})
+        self.assertEqual(SearchLog.objects.get().user, user)
+
+
 class DailyRecommendViewTests(APITestCase):
     """[오늘의 추천 장소] GET /search/recommend/daily/ 엔드포인트 확인."""
 
@@ -369,6 +381,7 @@ class PlaceTypeClassificationTests(TestCase):
 
     def test_classifies_cafe(self):
         self.assertEqual(classify_place_type(recommendation.category_tokens('카페>디저트')), 'cafe')
+        self.assertEqual(classify_place_type(recommendation.category_tokens('음식점>카페,디저트')), 'cafe')
 
     def test_classifies_restaurant(self):
         self.assertEqual(classify_place_type(recommendation.category_tokens('음식점>한식>한정식')), 'restaurant')

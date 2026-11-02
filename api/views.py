@@ -437,6 +437,11 @@ class PlaceKeywordSearchView(APIView):
             return Response({'error': '검색어를 입력해주세요.'}, status=status.HTTP_400_BAD_REQUEST)
 
         places = find_matching_places(keyword)
+
+        # 화면의 검색은 이 API를 쓰므로, 오늘의 추천에 쓰는 검색 기록도 여기서 남깁니다.
+        if request.user.is_authenticated:
+            SearchLog.objects.create(user=request.user, keyword=keyword)
+
         ad_threshold = getattr(settings, 'AD_EXCLUDE_THRESHOLD', 70)
         ad_names = set(
             PlaceAnalysis.objects.filter(ad_probability__gte=ad_threshold).values_list('name', flat=True)
