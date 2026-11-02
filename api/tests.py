@@ -21,6 +21,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from . import naver_miner, recommendation
+from .gemini_service import analyze_review
 from .keyword_taxonomy import MOOD_KEYWORDS, classify_place_type
 from .models import Place, PlaceAnalysis, PlaceImage, PlaceKeyword, PlaceViewLog, Review, ReviewSource, SearchLog
 
@@ -1266,6 +1267,105 @@ class NaverReviewRefreshTests(TestCase):
         self.assertEqual(ReviewSource.objects.filter(place=place).count(), 0)
         review = Review.objects.get(place=place)
         self.assertEqual(review.content, "네이버 등록 인증 업체 정보입니다.")
+
+    def _blog_response_side_effect(self, items):
+        def get_side_effect(url, headers=None, timeout=None):
+            if 'search/v1/blog' in url:
+                return self._items_response(items)
+            if 'search/v1/cafearticle' in url:
+                return self._items_response([])
+            return _fake_response(404, {})
+        return get_side_effect
+
+    @patch('api.naver_miner.extract_mood_keywords', return_value=[])
+    @patch('api.naver_miner.analyze_review')
+    @patch('api.naver_miner.requests.get')
+    def test_refresh_excludes_non_reviews_but_keeps_verdict(self, mock_get, mock_analyze, mock_mood):
+        """is_review=False인 글은 계산에서 빠지고, 사유와 함께 저장돼 재수집 때 재분석되지 않아야 함."""
+        place = Place.objects.create(name="공고섞인카페", address="대전 유성구")
+
+        def analyze_side_effect(content, place_name=None):
+            if '함께 일하실' in content:
+                return {
+                    'is_ad': True, 'non_ad_probability': 0, 'reason': 'ok', 'has_place_info': True,
+                    'is_review': False, 'exclude_reason': 'job_posting',
+                }
+            return {
+                'is_ad': False, 'non_ad_probability': 80, 'reason': 'ok', 'has_place_info': True,
+                'is_review': True, 'exclude_reason': None,
+            }
+
+        mock_analyze.side_effect = analyze_side_effect
+        mock_get.side_effect = self._blog_response_side_effect([
+            {"title": "공고섞인카페 후기", "description": "라떼가 맛있었어요", "link": "http://blog.example/real"},
+            {"title": "공고섞인카페 소식", "description": "함께 일하실 분을 찾아요", "link": "http://blog.example/job"},
+        ])
+
+        naver_miner.refresh_existing_places(request_interval=0)
+
+        self.assertEqual(PlaceAnalysis.objects.get(name=place.name).ad_probability, 20)
+        self.assertIn("라떼", Review.objects.get(place=place).content)
+        self.assertIn("라떼", mock_mood.call_args[0][1])
+        self.assertNotIn("함께 일하실", mock_mood.call_args[0][1])
+        excluded = ReviewSource.objects.get(place=place, is_review=False)
+        self.assertEqual(excluded.exclude_reason, 'job_posting')
+        self.assertEqual(ReviewSource.objects.filter(place=place).count(), 2)
+
+        mock_analyze.reset_mock()
+        naver_miner.refresh_existing_places(request_interval=0)
+        mock_analyze.assert_not_called()
+        self.assertEqual(ReviewSource.objects.get(place=place, is_review=False).exclude_reason, 'job_posting')
+
+    @patch('api.naver_miner.extract_mood_keywords', return_value=[])
+    @patch('api.naver_miner.analyze_review')
+    @patch('api.naver_miner.requests.get')
+    def test_refresh_all_non_reviews_uses_placeholder_and_keeps_verdict(self, mock_get, mock_analyze, mock_mood):
+        """전부 리뷰가 아니면 placeholder로 처리하되, 판정 기록은 남아야 함."""
+        place = Place.objects.create(name="공고만있는카페", address="대전 유성구")
+
+        def analyze_side_effect(content, place_name=None):
+            return {
+                'is_ad': False, 'non_ad_probability': 50, 'reason': 'ok', 'has_place_info': True,
+                'is_review': False, 'exclude_reason': 'other_notice',
+            }
+
+        mock_analyze.side_effect = analyze_side_effect
+        mock_get.side_effect = self._blog_response_side_effect([
+            {"title": "공고만있는카페 안내", "description": "상가 임대 안내입니다", "link": "http://blog.example/n"},
+        ])
+
+        naver_miner.refresh_existing_places(request_interval=0)
+
+        self.assertEqual(Review.objects.get(place=place).content, "네이버 등록 인증 업체 정보입니다.")
+        self.assertEqual(ReviewSource.objects.get(place=place).exclude_reason, 'other_notice')
+
+
+class AnalyzeReviewResponseNormalizationTests(TestCase):
+    def _analyze(self, payload):
+        with patch('api.gemini_service.genai') as mock_genai, \
+                override_settings(GEMINI_API_KEY='dummy'):
+            mock_genai.GenerativeModel.return_value.generate_content.return_value = Mock(text=json.dumps(payload))
+            return analyze_review('본문', '테스트카페')
+
+    def test_missing_is_review_is_not_filtered(self):
+        result = self._analyze({'is_ad': False, 'non_ad_probability': 80, 'reason': 'ok'})
+        self.assertTrue(result['is_review'])
+        self.assertIsNone(result['exclude_reason'])
+
+    def test_unknown_exclude_reason_becomes_other_notice(self):
+        result = self._analyze({'is_review': False, 'exclude_reason': '이상한값'})
+        self.assertFalse(result['is_review'])
+        self.assertEqual(result['exclude_reason'], 'other_notice')
+
+    def test_prompt_asks_for_review_verdict(self):
+        with patch('api.gemini_service.genai') as mock_genai, \
+                override_settings(GEMINI_API_KEY='dummy'):
+            generate = mock_genai.GenerativeModel.return_value.generate_content
+            generate.return_value = Mock(text='{}')
+            analyze_review('본문', '테스트카페')
+        prompt = generate.call_args[0][0]
+        self.assertIn('"is_review"', prompt)
+        self.assertIn('job_posting', prompt)
 
 
 class AdminVerificationActionTests(TestCase):

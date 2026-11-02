@@ -901,6 +901,8 @@ def _score_review_sources(place, candidates):
             is_ad = existing.is_ad
             ad_probability = existing.ad_probability
             has_place_info = existing.has_place_info
+            is_review = existing.is_review
+            exclude_reason = existing.exclude_reason
             reason = None
             reused_count += 1
         else:
@@ -909,6 +911,8 @@ def _score_review_sources(place, candidates):
             ad_probability = 100 - non_ad_probability
             is_ad = ai_result.get("is_ad", False)
             has_place_info = ai_result.get("has_place_info", True)
+            is_review = ai_result.get("is_review", True)
+            exclude_reason = ai_result.get("exclude_reason")
             reason = ai_result.get("reason", "분석 완료")
 
         scored.append({
@@ -916,6 +920,8 @@ def _score_review_sources(place, candidates):
             "is_ad": is_ad,
             "ad_probability": ad_probability,
             "has_place_info": has_place_info,
+            "is_review": is_review,
+            "exclude_reason": exclude_reason,
             "reason": reason,
         })
 
@@ -996,6 +1002,24 @@ def _save_fallback_placeholder(place, default_user, no_sources_reason):
     )
 
 
+def _save_review_sources(place, sources):
+    ReviewSource.objects.bulk_create([
+        ReviewSource(
+            place=place,
+            source_type=s["source_type"],
+            title=s["title"][:255],
+            url=s["url"] or None,
+            content_text=s["content"],
+            is_ad=s["is_ad"],
+            ad_probability=s["ad_probability"],
+            has_place_info=s.get("has_place_info", True),
+            is_review=s.get("is_review", True),
+            exclude_reason=s.get("exclude_reason"),
+        )
+        for s in sources
+    ])
+
+
 def _refresh_place_reviews(place, headers, default_user, request_interval):
     """
     [리뷰 최신화 로직 - 장소 정보 수집과 완전히 분리] 장소 하나에 대해 블로그+카페글에서
@@ -1011,6 +1035,10 @@ def _refresh_place_reviews(place, headers, default_user, request_interval):
     장소에 대한 알맹이 있는 내용이 없는 글(예: 스치듯 이름만 언급, 목록형 나열글)은
     _score_review_sources()가 매긴 has_place_info=False를 기준으로 걸러내고, 평균 광고
     확률/대표 리뷰 선정/분위기 키워드 분석 어디에도 반영하지 않습니다.
+
+    [리뷰 필터링] 구인공고/무관한 글/상업적 공고(is_review=False)도 같은 계산에서 제외합니다.
+    NON_REVIEW_SIGNAL_PATTERNS(1차 고정 문구 필터)를 빠져나간 글을 잡는 2차 안전장치입니다.
+    이 글들은 판정 검토와 재분석 생략을 위해 ReviewSource에는 저장합니다.
     """
     _store_structural_keywords(place)
 
@@ -1022,8 +1050,17 @@ def _refresh_place_reviews(place, headers, default_user, request_interval):
         return
 
     scored_all = _score_review_sources(place, candidates)
-    scored = [s for s in scored_all if s.get("has_place_info", True)]
-    dropped_count = len(scored_all) - len(scored)
+    non_reviews = [s for s in scored_all if not s.get("is_review", True)]
+    if non_reviews:
+        reason_counts = Counter(s.get("exclude_reason") or "other_notice" for s in non_reviews)
+        logger.info(
+            "   [리뷰 필터링] %s -> 구인공고 %s건 / 무관한 글 %s건 / 기타 공고 %s건을 제외했습니다.",
+            place.name, reason_counts["job_posting"], reason_counts["unrelated"], reason_counts["other_notice"]
+        )
+
+    reviews = [s for s in scored_all if s.get("is_review", True)]
+    scored = [s for s in reviews if s.get("has_place_info", True)]
+    dropped_count = len(reviews) - len(scored)
     if dropped_count:
         logger.info(
             "   [정보성 필터링] %s -> 장소명은 언급됐지만 실질적인 정보가 없다고 판단된 글 %s건을 제외했습니다.",
@@ -1034,6 +1071,7 @@ def _refresh_place_reviews(place, headers, default_user, request_interval):
         # 후보는 있었지만 전부 "이름만 스치듯 언급"으로 판정된 경우: 후보가 아예 없던
         # 경우와 동일하게 placeholder로 처리합니다.
         _save_fallback_placeholder(place, default_user, "장소 정보가 있는 리뷰 소스 없음")
+        _save_review_sources(place, non_reviews)
         return
 
     avg_ad_probability = round(sum(s["ad_probability"] for s in scored) / len(scored))
@@ -1073,19 +1111,7 @@ def _refresh_place_reviews(place, headers, default_user, request_interval):
     )
 
     place.review_sources.all().delete()
-    ReviewSource.objects.bulk_create([
-        ReviewSource(
-            place=place,
-            source_type=s["source_type"],
-            title=s["title"][:255],
-            url=s["url"] or None,
-            content_text=s["content"],
-            is_ad=s["is_ad"],
-            ad_probability=s["ad_probability"],
-            has_place_info=s.get("has_place_info", True),
-        )
-        for s in scored
-    ])
+    _save_review_sources(place, scored + non_reviews)
 
     _extract_mood_keywords(place, scored)
 

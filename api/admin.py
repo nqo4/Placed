@@ -41,9 +41,12 @@ class ReviewAdmin(admin.ModelAdmin):
 class ReviewSourceAdmin(admin.ModelAdmin):
     list_display = (
         'id', 'place', 'source_type', 'title', 'is_ad', 'ad_probability',
-        'has_place_info', 'is_ad_verified', 'verified_is_ad', 'created_at',
+        'has_place_info', 'is_review', 'exclude_reason', 'is_ad_verified', 'verified_is_ad', 'created_at',
     )
-    list_filter = ('source_type', 'is_ad', 'has_place_info', 'is_ad_verified', 'verified_is_ad')
+    list_filter = (
+        'source_type', 'is_ad', 'has_place_info', 'is_review', 'exclude_reason',
+        'is_ad_verified', 'verified_is_ad',
+    )
     search_fields = ('place__name', 'title')
     actions = ['mark_verified_ad', 'mark_verified_not_ad']
 

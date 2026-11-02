@@ -51,12 +51,29 @@ def analyze_review(text, place_name=None):
           할 일 목록의 한 항목으로만 등장하는 경우)
         - 글 전체 주제가 다른 것(교통편 문의, 다른 지역 여행 코스, 타 장소 추천 요청 등)
           이고 "{place_name}" 언급은 그중 한 문장/한 단어에 그치는 경우
+
+        [게시글 성격 판단 기준 - 리뷰가 아닌 글 탐지]
+        이 글이 "그 장소에 대한 실제 방문/이용 후기"가 아니라 다른 성격의 글이면 리뷰로 쓸 수
+        없습니다. has_place_info(장소에 대한 구체적 정보가 있는지)와는 별개의 기준입니다 -
+        구인공고도 주소나 영업시간 같은 구체적인 정보를 담을 수 있지만, 그래도 리뷰는 아닙니다.
+        아래 중 하나에 해당하면 is_review를 false로 판단하세요:
+        1. 구인공고/채용 관련 글: 직원·매니저·알바 모집, 급여/근무조건/면접 안내 등
+           (반드시 "구인", "채용" 같은 단어가 있어야 하는 건 아닙니다. "함께 일하실 분을 찾아요",
+           "정직원으로 모십니다"처럼 다르게 표현된 경우도 포함합니다.)
+        2. "{place_name}"과(와) 전혀 무관한 글: 장소명이 다른 의미의 일반 단어/어미와 우연히
+           겹쳐서 매칭됐거나, 글의 실제 주제가 이 장소와 아무 상관이 없는 경우
+        3. 그 외 리뷰가 아닌 상업적 공고/모집글: 분양, 임대, 체험단/서포터즈 모집, 이벤트 참여
+           안내 등
+        위 어디에도 해당하지 않고 실제 방문/이용 경험을 다루는 글이면 is_review는 true입니다.
         """
             place_relevance_field = (
                 '"has_place_info": true 또는 false '
                 f'(위 [장소 관련 정보 유무 판단 기준]에 따라 "{place_name}"에 대한 실질적인 '
                 '정보가 있으면 true, 이름만 스치듯 언급되면 false),\n'
-                '            "info_reason": "장소 정보가 있다/없다고 판단한 이유를 한 줄로 요약"'
+                '            "info_reason": "장소 정보가 있다/없다고 판단한 이유를 한 줄로 요약",\n'
+                '            "is_review": true 또는 false,\n'
+                '            "exclude_reason": is_review가 false일 때만 "job_posting" / "unrelated" / '
+                '"other_notice" 중 하나, is_review가 true면 null'
             )
 
         # 주석을 완전히 풀고 프롬프트를 명확하게 다듬었습니다.
@@ -102,6 +119,12 @@ def analyze_review(text, place_name=None):
         result = json.loads(result_text)
         # 안전 기본값: has_place_info가 응답에서 누락돼도 무리하게 걸러내지 않습니다.
         result.setdefault('has_place_info', True)
+        # is_review도 누락되면 걸러내지 않고, 목록 밖의 제외 사유는 other_notice로 통일합니다.
+        result['is_review'] = result.get('is_review') is not False
+        if result['is_review']:
+            result['exclude_reason'] = None
+        elif result.get('exclude_reason') not in ('job_posting', 'unrelated', 'other_notice'):
+            result['exclude_reason'] = 'other_notice'
         return result
 
     except Exception as e:
@@ -112,6 +135,7 @@ def analyze_review(text, place_name=None):
         return {
             "is_ad": False, "non_ad_probability": 50,
             "reason": "AI 연동 오류로 인한 분석 실패", "has_place_info": True,
+            "is_review": True, "exclude_reason": None,
         }
 
 

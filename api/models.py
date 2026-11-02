@@ -94,6 +94,16 @@ class ReviewSource(models.Model):
     # 판단하며, 이 값이 False인 후보는 ReviewSource로 저장되지 않고 광고 확률 평균/대표
     # 리뷰 선정에서도 제외됩니다(api/naver_miner.py의 _refresh_place_reviews 참고).
     has_place_info = models.BooleanField(default=True, help_text="이 글이 장소에 대한 실질적인 정보를 담고 있는지")
+    # [추가] 리뷰 필터링 - 구인공고/무관한 글/상업적 공고 판정 결과. has_place_info=False와 달리
+    # is_review=False인 글은 판정 검토와 재분석 생략을 위해 저장하지만, 광고 확률 평균/대표
+    # 리뷰/분위기 키워드/학습 데이터에는 반영하지 않습니다.
+    EXCLUDE_REASON_CHOICES = [
+        ('job_posting', '구인공고'),
+        ('unrelated', '무관한 글'),
+        ('other_notice', '기타 공고'),
+    ]
+    is_review = models.BooleanField(default=True, help_text="이 글이 실제 방문/이용 후기인지")
+    exclude_reason = models.CharField(max_length=20, choices=EXCLUDE_REASON_CHOICES, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     # [추가] 자체 학습 데이터셋 구축(1단계) - AI가 예측한 is_ad/ad_probability와는 별개로,

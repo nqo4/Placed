@@ -61,7 +61,7 @@ class Command(BaseCommand):
     def _export_ad_detection_dataset(self, output_dir):
         path = os.path.join(output_dir, 'ad_detection_dataset.jsonl')
         verified_sources = ReviewSource.objects.filter(
-            is_ad_verified=True, verified_is_ad__isnull=False
+            is_ad_verified=True, verified_is_ad__isnull=False, is_review=True
         ).select_related('place')
 
         count = 0
@@ -96,7 +96,7 @@ class Command(BaseCommand):
                 correct_keywords = list(mood_qs.filter(verified=True).values_list('keyword', flat=True))
                 incorrect_keywords = list(mood_qs.filter(verified=False).values_list('keyword', flat=True))
                 combined_content = "\n\n".join(
-                    place.review_sources.values_list('content_text', flat=True)
+                    place.review_sources.filter(is_review=True).values_list('content_text', flat=True)
                 )
                 row = {
                     'place': place.name,
