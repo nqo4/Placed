@@ -23,6 +23,7 @@ export const API_ROUTES = {
 
   SEARCH: "/api/search",
   SEARCH_ELASTIC: "/api/search/elastic/",
+  RECOMMEND_DAILY: "/api/search/recommend/daily/",
 
   ANALYZE: "/api/analyze/",
 };
