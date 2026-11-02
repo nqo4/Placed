@@ -132,10 +132,14 @@ def analyze_review(text, place_name=None):
         print(f"Gemini Error ({model_name}): {e}")
         # 에러 발생 시 방어용 안전 기본값 반환 (광고 아닐 확률을 50% 반반으로 처리,
         # 장소 정보 유무는 판단 실패로 무리하게 걸러내지 않도록 True)
+        # analysis_failed는 진짜 판정 50%와 구분해 다음 수집 때 재분석하기 위한 표시이고,
+        # credits_depleted는 크레딧이 채워질 때까지 모든 호출이 실패한다는 뜻입니다.
         return {
             "is_ad": False, "non_ad_probability": 50,
             "reason": "AI 연동 오류로 인한 분석 실패", "has_place_info": True,
             "is_review": True, "exclude_reason": None,
+            "analysis_failed": True,
+            "credits_depleted": "credits are depleted" in str(e),
         }
 
 

@@ -665,6 +665,83 @@ class NaverReviewRefreshTests(TestCase):
     def _items_response(self, items):
         return _fake_response(200, {"items": items})
 
+    def _blog_only_response(self, items):
+        def get_side_effect(url, headers=None, timeout=None):
+            return self._items_response(items if 'search/v1/blog' in url else [])
+        return get_side_effect
+
+    @patch('api.naver_miner.extract_mood_keywords', return_value=[])
+    @patch('api.naver_miner.analyze_review')
+    @patch('api.naver_miner.requests.get')
+    def test_failed_source_is_reanalyzed_but_judged_source_is_reused(self, mock_get, mock_analyze, mock_mood):
+        place = Place.objects.create(name="테스트카페", address="대전 유성구")
+        items = [
+            {"title": "테스트카페 실패글", "description": "본문", "link": "http://blog.example/failed"},
+            {"title": "테스트카페 정상글", "description": "본문", "link": "http://blog.example/judged"},
+        ]
+        ReviewSource.objects.create(
+            place=place, source_type='blog', url=items[0]['link'], ad_probability=50, analysis_failed=True,
+            content_text=f"[{items[0]['title']}] {items[0]['description']}",
+        )
+        ReviewSource.objects.create(
+            place=place, source_type='blog', url=items[1]['link'], ad_probability=20,
+            content_text=f"[{items[1]['title']}] {items[1]['description']}",
+        )
+        mock_get.side_effect = self._blog_only_response(items)
+        mock_analyze.return_value = {'is_ad': True, 'non_ad_probability': 20, 'reason': '재분석'}
+
+        naver_miner.refresh_existing_places(request_interval=0, only_failed=True)
+
+        mock_analyze.assert_called_once()
+        retried = place.review_sources.get(url=items[0]['link'])
+        self.assertEqual(retried.ad_probability, 80)
+        self.assertFalse(retried.analysis_failed)
+        self.assertEqual(PlaceAnalysis.objects.get(name=place.name).ad_probability, 50)
+
+    @patch('api.naver_miner.extract_mood_keywords', return_value=[])
+    @patch('api.naver_miner.analyze_review')
+    @patch('api.naver_miner.requests.get')
+    def test_failed_source_is_stored_flagged_and_left_out_of_average(self, mock_get, mock_analyze, mock_mood):
+        place = Place.objects.create(name="테스트카페", address="대전 유성구")
+        items = [
+            {"title": "테스트카페 글1", "description": "본문", "link": "http://blog.example/1"},
+            {"title": "테스트카페 글2", "description": "본문", "link": "http://blog.example/2"},
+        ]
+        mock_get.side_effect = self._blog_only_response(items)
+        mock_analyze.side_effect = [
+            {'is_ad': True, 'non_ad_probability': 10, 'reason': '광고'},
+            {'is_ad': False, 'non_ad_probability': 50, 'reason': '오류', 'analysis_failed': True},
+        ]
+
+        naver_miner.refresh_existing_places(request_interval=0)
+
+        self.assertEqual(PlaceAnalysis.objects.get(name=place.name).ad_probability, 90)
+        self.assertTrue(place.review_sources.get(url=items[1]['link']).analysis_failed)
+        self.assertFalse(place.review_sources.get(url=items[0]['link']).analysis_failed)
+
+    @patch('api.naver_miner.analyze_review')
+    @patch('api.naver_miner.requests.get')
+    def test_depleted_credits_stop_run_and_keep_existing_data(self, mock_get, mock_analyze):
+        place = Place.objects.create(name="테스트카페", address="대전 유성구")
+        item = {"title": "테스트카페 글", "description": "본문", "link": "http://blog.example/1"}
+        ReviewSource.objects.create(
+            place=place, source_type='blog', url=item['link'], ad_probability=50, analysis_failed=True,
+            content_text=f"[{item['title']}] {item['description']}",
+        )
+        Place.objects.create(name="다음카페", address="대전 유성구")
+        mock_get.side_effect = self._blog_only_response([item])
+        mock_analyze.return_value = {
+            'is_ad': False, 'non_ad_probability': 50, 'reason': '오류',
+            'analysis_failed': True, 'credits_depleted': True,
+        }
+
+        with self.assertRaises(naver_miner.GeminiCreditsDepleted):
+            naver_miner.refresh_existing_places(request_interval=0, only_failed=True)
+
+        mock_analyze.assert_called_once()
+        self.assertTrue(place.review_sources.get().analysis_failed)
+        self.assertFalse(PlaceAnalysis.objects.filter(name=place.name).exists())
+
     @patch('api.naver_miner.extract_mood_keywords', return_value=[])
     @patch('api.naver_miner.analyze_review')
     @patch('api.naver_miner.requests.get')

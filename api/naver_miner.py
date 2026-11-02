@@ -123,6 +123,7 @@ from urllib.parse import quote
 import requests
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 
 from .gemini_service import analyze_review, extract_mood_keywords
 from .keyword_taxonomy import MAX_MOOD_KEYWORDS_PER_PLACE, MOOD_KEYWORDS
@@ -879,16 +880,28 @@ def _collect_review_source_candidates(place, headers, request_interval):
     return selected, refined_name_short
 
 
+class GeminiCreditsDepleted(Exception):
+    """Gemini 크레딧이 소진돼 이후 호출도 모두 실패하는 상태. 장소 데이터를 덮어쓰기 전에 중단합니다."""
+
+
+def _analyze_or_stop(*args):
+    ai_result = analyze_review(*args)
+    if ai_result.get("credits_depleted"):
+        raise GeminiCreditsDepleted()
+    return ai_result
+
+
 def _score_review_sources(place, candidates):
     """
     각 후보 글을 AI로 분석해 ad_probability(광고일 확률)와 has_place_info(장소에 대한
     실질적인 정보가 있는지)를 매깁니다. 기존에 저장된 ReviewSource와 (출처 종류, URL, 본문)이
     완전히 같은 후보는 재분석하지 않고 이전 판정을 재사용합니다 - 내용이 바뀌지 않은 글까지
-    매번 Gemini에 다시 물어보는 비용을 줄입니다.
+    매번 Gemini에 다시 물어보는 비용을 줄입니다. 분석에 실패했던 글은 재사용하지 않고 다시
+    분석합니다.
     """
     existing_by_key = {
         (rs.source_type, rs.url or "", rs.content_text): rs
-        for rs in place.review_sources.all()
+        for rs in place.review_sources.filter(analysis_failed=False)
     }
 
     scored = []
@@ -903,10 +916,12 @@ def _score_review_sources(place, candidates):
             has_place_info = existing.has_place_info
             is_review = existing.is_review
             exclude_reason = existing.exclude_reason
+            analysis_failed = False
             reason = None
             reused_count += 1
         else:
-            ai_result = analyze_review(cand["content"], place.name)
+            ai_result = _analyze_or_stop(cand["content"], place.name)
+            analysis_failed = ai_result.get("analysis_failed", False)
             non_ad_probability = ai_result.get("non_ad_probability", 50)
             ad_probability = 100 - non_ad_probability
             is_ad = ai_result.get("is_ad", False)
@@ -922,6 +937,7 @@ def _score_review_sources(place, candidates):
             "has_place_info": has_place_info,
             "is_review": is_review,
             "exclude_reason": exclude_reason,
+            "analysis_failed": analysis_failed,
             "reason": reason,
         })
 
@@ -977,7 +993,7 @@ def _save_fallback_placeholder(place, default_user, no_sources_reason):
     키워드는 비웁니다. no_sources_reason은 로그에만 쓰이는 상황 설명입니다.
     """
     fallback_content = "네이버 등록 인증 업체 정보입니다."
-    ai_result = analyze_review(fallback_content)
+    ai_result = _analyze_or_stop(fallback_content)
     non_ad_probability = ai_result.get("non_ad_probability", 50)
     ad_probability = 100 - non_ad_probability
 
@@ -1015,6 +1031,7 @@ def _save_review_sources(place, sources):
             has_place_info=s.get("has_place_info", True),
             is_review=s.get("is_review", True),
             exclude_reason=s.get("exclude_reason"),
+            analysis_failed=s.get("analysis_failed", False),
         )
         for s in sources
     ])
@@ -1074,12 +1091,15 @@ def _refresh_place_reviews(place, headers, default_user, request_interval):
         _save_review_sources(place, non_reviews)
         return
 
-    avg_ad_probability = round(sum(s["ad_probability"] for s in scored) / len(scored))
+    # 분석에 실패한 글의 기본값(50%)이 평균을 끌어당기지 않도록 정상 판정만 계산에 씁니다.
+    # 전부 실패했으면 기존처럼 기본값으로 저장하고 다음 수집 때 재분석합니다.
+    judged = [s for s in scored if not s.get("analysis_failed")] or scored
+    avg_ad_probability = round(sum(s["ad_probability"] for s in judged) / len(judged))
     ad_threshold = getattr(settings, 'AD_EXCLUDE_THRESHOLD', 70)
     final_is_ad = avg_ad_probability >= ad_threshold
 
     # [평균에 가장 가까운 대표 리뷰] 여러 값이 동일하게 가까우면 먼저 나온 항목을 사용합니다.
-    representative = min(scored, key=lambda s: abs(s["ad_probability"] - avg_ad_probability))
+    representative = min(judged, key=lambda s: abs(s["ad_probability"] - avg_ad_probability))
 
     all_tags = []
     for s in scored:
@@ -1091,7 +1111,7 @@ def _refresh_place_reviews(place, headers, default_user, request_interval):
 
     representative_reason = representative.get("reason") or "이전 분석 결과 재사용"
     ai_summary = (
-        f"총 {len(scored)}건의 블로그/카페글을 분석한 평균 광고 확률 {avg_ad_probability}%입니다. "
+        f"총 {len(judged)}건의 블로그/카페글을 분석한 평균 광고 확률 {avg_ad_probability}%입니다. "
         f"(대표 리뷰 사유: {representative_reason})"
     )
 
@@ -1121,7 +1141,7 @@ def _refresh_place_reviews(place, headers, default_user, request_interval):
     )
 
 
-def refresh_existing_places(request_interval=0.2, only_new=False):
+def refresh_existing_places(request_interval=0.2, only_new=False, only_failed=False):
     """
     [리뷰 최신화 로직 - 장소 수집과 분리] 새로 장소를 찾지 않고(지역 검색 API 호출 없음),
     DB에 이미 등록된 장소들의 리뷰만 블로그+카페글에서 모아 평균 광고 확률로 갱신합니다.
@@ -1131,6 +1151,10 @@ def refresh_existing_places(request_interval=0.2, only_new=False):
     only_new=True면 아직 한 번도 리뷰가 분석되지 않은(PlaceAnalysis가 없는) 장소만
     대상으로 합니다 - mine_naver로 새로 등록한 장소의 리뷰를 처음 채울 때 사용하세요.
     (관리 명령: python manage.py refresh_naver [--only-new])
+
+    only_failed=True면 AI 분석 실패 기록이 남은 장소만 대상으로 합니다. Gemini 크레딧이
+    소진되면 그 장소의 기존 데이터를 그대로 두고 즉시 중단하므로, 충전 후 다시 실행하면
+    남은 장소부터 이어집니다. (관리 명령: python manage.py refresh_naver --only-failed)
     """
     headers = _get_naver_headers()
     if not headers:
@@ -1145,6 +1169,13 @@ def refresh_existing_places(request_interval=0.2, only_new=False):
     if only_new:
         analyzed_names = set(PlaceAnalysis.objects.values_list('name', flat=True))
         places = [p for p in Place.objects.all() if p.name not in analyzed_names]
+    elif only_failed:
+        failed_names = PlaceAnalysis.objects.filter(
+            ai_summary__contains='AI 연동 오류'
+        ).values_list('name', flat=True)
+        places = list(Place.objects.filter(
+            Q(review_sources__analysis_failed=True) | Q(name__in=failed_names)
+        ).distinct())
     else:
         places = list(Place.objects.all())
 
@@ -1158,6 +1189,12 @@ def refresh_existing_places(request_interval=0.2, only_new=False):
         try:
             _refresh_place_reviews(place, headers, default_user, request_interval)
             updated += 1
+        except GeminiCreditsDepleted:
+            logger.error(
+                "Gemini 크레딧이 소진되어 중단합니다 (%s/%s건 처리). 충전 후 다시 실행하세요.",
+                updated, len(places)
+            )
+            raise
         except Exception:
             logger.exception("리뷰 최신화 중 오류 발생, 건너뜁니다: %s", place.name)
         time.sleep(request_interval)

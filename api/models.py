@@ -104,6 +104,9 @@ class ReviewSource(models.Model):
     ]
     is_review = models.BooleanField(default=True, help_text="이 글이 실제 방문/이용 후기인지")
     exclude_reason = models.CharField(max_length=20, choices=EXCLUDE_REASON_CHOICES, null=True, blank=True)
+    # [추가] AI 호출 실패로 기본값(50%)이 저장된 글. 재사용하지 않고 다음 수집 때 다시 분석하며,
+    # 다른 글에 정상 판정이 있으면 광고 확률 평균/대표 리뷰에서도 제외합니다.
+    analysis_failed = models.BooleanField(default=False, help_text="AI 분석 실패로 기본값이 저장된 글인지")
     created_at = models.DateTimeField(auto_now_add=True)
 
     # [추가] 자체 학습 데이터셋 구축(1단계) - AI가 예측한 is_ad/ad_probability와는 별개로,

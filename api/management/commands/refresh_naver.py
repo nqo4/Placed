@@ -1,6 +1,6 @@
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
-from api.naver_miner import MIN_REVIEW_SOURCES, refresh_existing_places
+from api.naver_miner import GeminiCreditsDepleted, MIN_REVIEW_SOURCES, refresh_existing_places
 
 
 class Command(BaseCommand):
@@ -35,8 +35,19 @@ class Command(BaseCommand):
             help='아직 한 번도 리뷰가 분석되지 않은(PlaceAnalysis가 없는) 장소만 대상으로 합니다. '
                  'mine_naver 직후 신규 장소 리뷰만 채울 때 사용하세요.'
         )
+        parser.add_argument(
+            '--only-failed', action='store_true',
+            help='AI 분석 실패 기록이 남은 장소만 다시 분석합니다. 크레딧이 소진되면 즉시 중단합니다.'
+        )
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.NOTICE('[refresh_naver] 장소 리뷰 최신화를 시작합니다...'))
-        refresh_existing_places(request_interval=options['interval'], only_new=options['only_new'])
+        try:
+            refresh_existing_places(
+                request_interval=options['interval'],
+                only_new=options['only_new'],
+                only_failed=options['only_failed'],
+            )
+        except GeminiCreditsDepleted:
+            raise CommandError('Gemini 크레딧이 소진되어 중단했습니다. 충전 후 다시 실행하세요.')
         self.stdout.write(self.style.SUCCESS('[refresh_naver] 완료.'))
