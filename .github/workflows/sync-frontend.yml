@@ -1,0 +1,41 @@
+# tjsals021127-wq/Placed(프론트엔드 원본)의 master를 이 저장소 db-update의 frontend/ 폴더에 반영합니다.
+# 30분마다 확인하며, Actions 탭에서 "Run workflow"로 바로 실행할 수도 있습니다.
+# 프론트엔드 수정은 원본 저장소에서만 하세요. frontend/를 여기서 직접 고치면 충돌로 동기화가 멈출 수 있습니다.
+name: 프론트엔드 동기화
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency: sync-frontend
+
+env:
+  SOURCE_REPO: https://github.com/tjsals021127-wq/Placed.git
+  SOURCE_BRANCH: master
+  TARGET_BRANCH: db-update
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 0
+
+      - name: 원본 변경 사항을 frontend/에 반영
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch "$SOURCE_REPO" "$SOURCE_BRANCH"
+          if git merge-base --is-ancestor FETCH_HEAD HEAD; then
+            echo "새 커밋이 없습니다."
+            exit 0
+          fi
+          git subtree pull --prefix=frontend "$SOURCE_REPO" "$SOURCE_BRANCH" \
+            -m "chore: 프론트엔드 동기화 (tjsals021127-wq/Placed $(git rev-parse --short FETCH_HEAD))"
+          git push origin "HEAD:$TARGET_BRANCH"
