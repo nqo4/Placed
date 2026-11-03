@@ -7,18 +7,19 @@ User = get_user_model()
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'phone_number']
+        fields = ['id', 'username', 'first_name', 'email', 'phone_number']
 
 class SignupSerializer(serializers.ModelSerializer):
     id = serializers.CharField(required=False, write_only=True)
     username = serializers.CharField(required=False)
     password = serializers.CharField(write_only=True)
+    first_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
     email = serializers.EmailField(required=False, allow_blank=True, allow_null=True)
     phone_number = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'password', 'email', 'phone_number']
+        fields = ['id', 'username', 'password', 'first_name', 'email', 'phone_number']
 
     def create(self, validated_data):
         user_id = validated_data.get('id')
@@ -39,6 +40,7 @@ class SignupSerializer(serializers.ModelSerializer):
             username=user_id,
             email=user_email,
             password=validated_data['password'],
+            first_name=validated_data.get('first_name', ''),
             phone_number=validated_data.get('phone_number', '')
         )
         return user
@@ -48,7 +50,17 @@ class InquirySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Inquiry
-        fields = ['id', 'user', 'category', 'message', 'created_at']
+        fields = ['id', 'user', 'category', 'message', 'answer', 'created_at']
+        # 답변은 관리자 답변 API(InquiryAnswerSerializer)로만 저장합니다.
+        read_only_fields = ['answer']
+
+
+class InquiryAnswerSerializer(serializers.ModelSerializer):
+    answer = serializers.CharField(allow_blank=False)
+
+    class Meta:
+        model = Inquiry
+        fields = ['answer']
 
 class PlaceImageSerializer(serializers.ModelSerializer):
     # [수정] 기존에는 SlugRelatedField(slug_field='image_url')로 크롤링된 외부 URL만
@@ -114,7 +126,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 class AdminUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'phone_number', 'is_staff', 'date_joined']
+        fields = ['id', 'username', 'first_name', 'email', 'phone_number', 'is_staff', 'date_joined']
 
 
 class PlaceAnalysisSerializer(serializers.ModelSerializer):

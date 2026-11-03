@@ -217,6 +217,8 @@ class Inquiry(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='inquiries')
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='etc')
     message = models.TextField()
+    # 관리자 화면에서 다는 답변. 답변 전에는 빈 값입니다.
+    answer = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

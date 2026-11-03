@@ -8,7 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .models import PlaceAnalysis, Place, PlaceImage, Review, Inquiry, SearchLog, PlaceViewLog
 from .serializers import (
     UserSerializer, SignupSerializer, PlaceSerializer,
-    ReviewSerializer, InquirySerializer, PlaceImageUploadSerializer,
+    ReviewSerializer, InquirySerializer, InquiryAnswerSerializer, PlaceImageUploadSerializer,
     PlaceImageSerializer, AdminUserSerializer, PlaceAnalysisSerializer
 )
 # [수정 사항 1] 서비스 파일명을 범수님이 사용 중인 gemini_service로 정확히 변경했습니다.
@@ -498,3 +498,15 @@ class AdminInquiryListView(generics.ListAPIView):
     queryset = Inquiry.objects.all().order_by('-created_at')
     serializer_class = InquirySerializer
     permission_classes = [permissions.IsAdminUser]
+
+
+class AdminInquiryAnswerView(APIView):
+    """관리자가 문의에 답변을 저장합니다. 다시 보내면 기존 답변을 고칩니다."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def patch(self, request, pk):
+        inquiry = get_object_or_404(Inquiry, pk=pk)
+        serializer = InquiryAnswerSerializer(inquiry, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(InquirySerializer(inquiry).data, status=status.HTTP_200_OK)

@@ -23,7 +23,7 @@ from rest_framework.test import APITestCase
 from . import naver_miner, recommendation
 from .gemini_service import analyze_review
 from .keyword_taxonomy import MOOD_KEYWORDS, classify_place_type
-from .models import Place, PlaceAnalysis, PlaceImage, PlaceKeyword, PlaceViewLog, Review, ReviewSource, SearchLog
+from .models import Inquiry, Place, PlaceAnalysis, PlaceImage, PlaceKeyword, PlaceViewLog, Review, ReviewSource, SearchLog
 
 User = get_user_model()
 
@@ -1689,6 +1689,34 @@ class FrontendCompatibilityTests(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data['token'], res.data['access'])
         self.assertTrue(res.data['is_staff'])
+
+    def test_signup_name_is_returned_on_login(self):
+        self.client.post(reverse('signup'), {'id': 'named01', 'password': 'StrongPass123', 'first_name': '김범수'})
+        res = self.client.post(reverse('login'), {'id': 'named01', 'password': 'StrongPass123'})
+        self.assertEqual(res.data['user']['first_name'], '김범수')
+
+    def test_staff_can_answer_inquiry(self):
+        inquiry = Inquiry.objects.create(user=self.user, category='etc', message='문의합니다')
+        url = reverse('admin-inquiry-answer', args=[inquiry.id])
+
+        self.client.force_authenticate(user=self.user)
+        self.assertEqual(self.client.patch(url, {'answer': '답변'}).status_code, status.HTTP_403_FORBIDDEN)
+
+        self.client.force_authenticate(user=self.staff)
+        self.assertEqual(self.client.patch(url, {'answer': ''}).status_code, status.HTTP_400_BAD_REQUEST)
+        res = self.client.patch(url, {'answer': '확인했습니다.'})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['answer'], '확인했습니다.')
+        inquiry.refresh_from_db()
+        self.assertEqual(inquiry.answer, '확인했습니다.')
+        self.assertEqual(self.client.patch(reverse('admin-inquiry-answer', args=[9999]), {'answer': 'x'}).status_code,
+                         status.HTTP_404_NOT_FOUND)
+
+    def test_user_cannot_set_answer_when_creating_inquiry(self):
+        self.client.force_authenticate(user=self.user)
+        res = self.client.post(reverse('create-inquiry'), {'category': 'etc', 'message': '문의', 'answer': '셀프 답변'})
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Inquiry.objects.get().answer, '')
 
     def test_admin_endpoints_are_staff_only(self):
         names = ['admin-users', 'admin-places', 'admin-analysis', 'admin-reviews', 'admin-inquiries']

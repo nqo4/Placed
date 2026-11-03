@@ -8,7 +8,7 @@ from .views import (
     PlaceDetailView, SimilarPlacesView, PlaceReviewsView, CreateReviewView, MyReviewsView,
     SearchView, RecommendView, DailyRecommendView, UploadPlaceImageView, AnalyzePlaceView, AISearchView,
     PlaceKeywordSearchView, AdminUserListView, AdminPlaceListView, AdminAnalysisListView,
-    AdminReviewListView, AdminInquiryListView,
+    AdminReviewListView, AdminInquiryListView, AdminInquiryAnswerView,
 )
 
 urlpatterns = [
@@ -57,4 +57,5 @@ urlpatterns = [
     path('admin/analysis/', AdminAnalysisListView.as_view(), name='admin-analysis'),
     path('admin/reviews/', AdminReviewListView.as_view(), name='admin-reviews'),
     path('admin/inquiries/', AdminInquiryListView.as_view(), name='admin-inquiries'),
+    path('admin/inquiries/<int:pk>/answer/', AdminInquiryAnswerView.as_view(), name='admin-inquiry-answer'),
 ]
