@@ -4,15 +4,15 @@
 |---|---|---|---|
 | PostgreSQL `placed-db` | Render | - | - |
 | Django API `placed-api` | Render | nqo4/Placed `db-update` | `https://placed-api.onrender.com` |
-| React 사이트 | Vercel | tjsals021127-wq/Placed `master` | `https://placed.vercel.app` |
+| React 사이트 | Vercel | nqo4/Placed `db-update`의 `frontend/` | `https://placed.vercel.app` |
+
+프론트엔드 코드는 이 저장소의 `frontend/` 폴더에 있습니다(이전 저장소 tjsals021127-wq/Placed의 기록 포함).
 
 이름이 이미 쓰이고 있으면 두 서비스 모두 주소 뒤에 문자가 붙습니다. 아래 순서대로 실제 주소를 확인하며 진행합니다.
 
 ## 0. 준비
 
-- Render와 Vercel 계정에 GitHub를 연결합니다.
-  Render는 `nqo4/Placed`, Vercel은 `tjsals021127-wq/Placed`에 접근할 수 있어야 합니다.
-  프론트엔드 저장소는 소유자(tjsals021127-wq) 계정에서 허용해야 할 수 있습니다.
+- Render와 Vercel 계정에 GitHub(nqo4)를 연결하고 `nqo4/Placed` 접근을 허용합니다.
 - Gemini API 키, NAVER API HUB Client ID/Secret을 준비합니다.
 
 ## 1. 백엔드 (Render)
@@ -27,11 +27,17 @@
 
 ## 2. 프론트엔드 (Vercel)
 
-1. Vercel 대시보드 > **Add New > Project** > `tjsals021127-wq/Placed` Import.
-2. Framework Preset은 Create React App으로 자동 인식됩니다. 빌드 설정은 저장소의 `vercel.json`이 정합니다.
+1. Vercel 대시보드 > **Add New > Project** > `nqo4/Placed` Import.
+2. **Root Directory**를 `frontend`로 지정합니다. Framework Preset은 Create React App으로 인식되고,
+   빌드 설정은 `frontend/vercel.json`이 정합니다.
 3. **Environment Variables**에 추가합니다.
    - `REACT_APP_API_URL` = 1단계의 API 주소 (끝에 `/` 없이)
-4. **Deploy**. 완료 후 나오는 주소(예: `https://placed.vercel.app`)를 확인합니다.
+4. **Deploy**.
+5. Vercel은 처음에 저장소 기본 브랜치(`main`)로 배포하는데, `main`에는 `frontend/`가 없어 실패합니다.
+   프로젝트 > **Settings > Git > Production Branch**를 `db-update`로 바꾸고, Deployments에서
+   `db-update`의 최신 배포를 **Promote to Production**(또는 `db-update`에 커밋을 하나 푸시)합니다.
+   GitHub에서 저장소 기본 브랜치를 `db-update`로 바꾸거나 `main`에 병합해 두면 이 단계가 필요 없습니다.
+6. 완료 후 나오는 고정 주소(예: `https://placed.vercel.app`)를 확인합니다.
 
 `REACT_APP_API_URL`은 빌드할 때 들어가므로, 나중에 값을 바꾸면 **Redeploy**해야 반영됩니다.
 
