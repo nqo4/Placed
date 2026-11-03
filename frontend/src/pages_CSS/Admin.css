@@ -1,0 +1,263 @@
+.admin-wrapper {
+  background-color: #f4f7f9;
+  min-height: 100vh;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.admin-layout {
+  display: flex;
+  max-width: 1200px;
+  margin: 40px auto;
+  gap: 30px;
+  padding: 0 20px;
+}
+
+/* 사이드바 - MyPage랑 동일한 스타일 */
+.admin-sidebar {
+  width: 220px;
+  background: white;
+  padding: 20px;
+  border-radius: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  height: fit-content;
+}
+
+.admin-sidebar-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 0 12px 8px;
+}
+
+.menu-btn {
+  display: block;
+  width: 100%;
+  padding: 13px 18px;
+  text-align: left;
+  border: none;
+  background: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #666;
+  cursor: pointer;
+  border-radius: 12px;
+  margin-bottom: 6px;
+  transition: all 0.2s;
+}
+
+.menu-btn:hover {
+  background-color: #f0f4ff;
+  color: #2a7fff;
+}
+
+.menu-btn.active {
+  background-color: #2a7fff;
+  color: white;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background-color: #eee;
+  margin: 14px 0;
+}
+
+.logout-btn {
+  color: #2a7fff;
+}
+
+/* 오른쪽 본문 */
+.admin-content {
+  flex: 1;
+  background: white;
+  padding: 36px 40px;
+  border-radius: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  min-height: 500px;
+}
+
+.admin-content h2 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin: 0 0 28px;
+  color: #1a1a2e;
+}
+
+.dummy-tag {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #aaa;
+}
+
+/* 대시보드 통계 카드 */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 36px;
+}
+
+.stat-card {
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 22px 20px;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 800;
+  margin: 0 0 6px;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: #888;
+  margin: 0;
+}
+
+/* 섹션 구분 */
+.admin-section {
+  margin-top: 8px;
+}
+
+.admin-section h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #555;
+  margin-bottom: 14px;
+}
+
+/* 테이블 감싸는 스크롤 박스 */
+.table-scroll {
+  max-height: 500px;
+  overflow-y: auto;
+  border-radius: 10px;
+  border: 1px solid #f0f0f0;
+}
+
+/* 테이블 */
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.admin-table th {
+  background-color: #f8fafc;
+  color: #666;
+  font-weight: 700;
+  padding: 11px 14px;
+  text-align: left;
+  border-bottom: 2px solid #eee;
+}
+
+.admin-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #f0f0f0;
+  color: #333;
+  vertical-align: middle;
+}
+
+.admin-table tr:hover td {
+  background-color: #fafbff;
+}
+
+.td-truncate {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.td-content {
+  max-width: 280px;
+}
+
+/* 배지 */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background-color: #eef2ff;
+  color: #2a7fff;
+}
+
+.badge-admin {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.badge-user {
+  background-color: #f0f4ff;
+  color: #555;
+}
+
+.badge-ad {
+  background-color: #fde8e8;
+  color: #dc3545;
+}
+
+.badge-ok {
+  background-color: #e6f4ea;
+  color: #28a745;
+}
+
+/* 테이블 내 링크 버튼 */
+.link-btn {
+  background: none;
+  border: 1px solid #2a7fff;
+  color: #2a7fff;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.link-btn:hover {
+  background-color: #2a7fff;
+  color: white;
+}
+
+/* 모달 */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-box {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  width: 500px;
+  max-width: 90%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+.modal-box h3 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  margin: 0 0 4px;
+}
+
+.modal-close-btn {
+  margin-top: 20px;
+  padding: 10px 24px;
+  background: #2a7fff;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  float: right;
+}

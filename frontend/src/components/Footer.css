@@ -1,0 +1,16 @@
+.common-footer {
+  text-align: center;
+  padding: 24px;
+  color: #aaa;
+  font-size: 0.85rem;
+  border-top: 1px solid #eef0f3;
+}
+
+.common-footer a {
+  color: #aaa;
+  text-decoration: none;
+}
+
+.common-footer a:hover {
+  color: #555;
+}

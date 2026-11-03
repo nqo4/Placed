@@ -1,0 +1,182 @@
+/* 전체 페이지 설정 */
+.search-results-page {
+  font-family: "Noto Sans KR", sans-serif;
+  background: #f9fafb;
+  color: #333;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column; /* 헤더와 본문을 위아래로 배치 */
+}
+
+/* 
+  [삭제] .results-header, .results-header h1, .nav-menu 관련 스타일 
+  이유: 공통 Header.css에서 관리하므로 스타일 충돌 방지를 위해 제거합니다.
+*/
+
+/* 검색 결과 상단 타이틀 섹션 */
+.search-title-section {
+  text-align: center;
+  padding: 80px 20px 40px;
+}
+
+.search-title-section h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #2a7fff;
+  margin-bottom: 8px;
+}
+
+.keyword-info {
+  font-size: 1.1rem;
+  color: #555;
+}
+
+/* 결과 컨테이너 */
+.results-container {
+  flex: 1;
+  padding-bottom: 80px;
+}
+
+.results-list-wrapper {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.ai-notice-text {
+  text-align: center;
+  margin-bottom: 40px;
+  font-size: 1.1rem;
+}
+
+/* 검색 결과 그리드: 2열 배치 */
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+
+/* 카드 디자인: 이미지 옆으로 텍스트 배치 */
+.result-card {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 20px;
+  padding: 25px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.result-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+.card-img-box {
+  width: 140px;
+  height: 140px;
+  background: #f0f3f7;
+  border-radius: 16px;
+  overflow: hidden;
+  margin-right: 25px;
+  flex-shrink: 0;
+}
+
+.result-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-info-box {
+  flex: 1;
+  text-align: left;
+}
+
+.card-title-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.card-title-line h3 {
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.ai-status-badge {
+  border: 1px solid #2a7fff;
+  color: #2a7fff;
+  padding: 2px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.card-address {
+  font-size: 0.95rem;
+  color: #666;
+  margin: 5px 0 10px 0;
+}
+
+.card-trust-value {
+  color: #2a7fff;
+  font-weight: 800;
+  font-size: 1.15rem;
+}
+
+/* 결과 없음 스타일 */
+.no-result-wrapper {
+  display: flex;
+  justify-content: center;
+  padding-top: 20px;
+}
+
+.empty-box {
+  text-align: center;
+  padding: 60px 30px;
+  background: #fff;
+  border-radius: 18px;
+  width: 420px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+}
+
+.error-icon {
+  width: 120px;
+  margin-bottom: 20px;
+}
+
+.back-btn {
+  background-color: #5c1c3d; /* 기존 유지: 자주색 계열 */
+  color: #fff;
+  padding: 14px 24px;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+}
+
+/* 푸터 섹션 */
+.footer {
+  text-align: center;
+  padding: 40px;
+  border-top: 1px solid #eee;
+  font-size: 0.9rem;
+  color: #999;
+}
+
+.footer a {
+  color: #2a7fff;
+  text-decoration: none;
+  margin: 0 5px;
+}
+
+.footer a:hover {
+  text-decoration: underline;
+}

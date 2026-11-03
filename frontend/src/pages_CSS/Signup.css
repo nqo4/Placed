@@ -1,0 +1,128 @@
+/* 전체 페이지 배경 */
+.signup-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #f0f2f5; /* 연한 그레이 배경 */
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+/* 회원가입 카드 박스 */
+.signup-card {
+  background: white;
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  max-width: 450px;
+  text-align: left;
+}
+
+/* 로고 스타일 */
+.placed-logo {
+  color: #2a7fff; /* 선민님의 메인 컬러 */
+  text-align: center;
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 30px;
+  letter-spacing: -1px;
+}
+
+/* 입력 그룹 (라벨 + 인풋) */
+.input-group {
+  margin-bottom: 20px;
+}
+
+.input-group label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #4a5568;
+  margin-bottom: 8px;
+}
+
+/* 한 줄에 인풋과 버튼이 있는 경우 (이메일) */
+.input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.input-row input {
+  flex: 1;
+}
+
+/* 기본 인풋 스타일 */
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: all 0.2s;
+  box-sizing: border-box; /* 패딩 때문에 박스 커지는 것 방지 */
+}
+
+input:focus {
+  outline: none;
+  border-color: #2a7fff;
+  box-shadow: 0 0 0 3px rgba(42, 127, 255, 0.1);
+}
+
+/* 중복 확인 버튼 */
+.check-btn {
+  background: white;
+  color: #2a7fff;
+  border: 1px solid #2a7fff;
+  padding: 0 15px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap; /* 글자 줄바꿈 방지 */
+  transition: all 0.2s;
+}
+
+.check-btn:hover {
+  background: #f0f7ff;
+}
+
+/* 가입하기 메인 버튼 */
+.submit-btn {
+  width: 100%;
+  background-color: #2a7fff;
+  color: white;
+  padding: 15px;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.submit-btn:hover {
+  background-color: #1b63e0; /* 호버 시 약간 어두운 파랑 */
+}
+
+/* 하단 로그인 링크 */
+.login-prompt {
+  text-align: center;
+  margin-top: 25px;
+  font-size: 0.9rem;
+  color: #718096;
+}
+
+.login-prompt span {
+  color: #2a7fff;
+  font-weight: 700;
+  cursor: pointer;
+  margin-left: 5px;
+  text-decoration: none;
+}
+
+.login-prompt span:hover {
+  text-decoration: underline;
+}

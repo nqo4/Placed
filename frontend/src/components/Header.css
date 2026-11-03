@@ -1,0 +1,55 @@
+.common-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 50px;
+  background-color: white;
+  border-bottom: 1px solid #eee;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%; /* 가로 꽉 차게 */
+  box-sizing: border-box; /* 패딩 포함 너비 계산 */
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.header-logo-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  margin-right: 10px;
+}
+
+.logo-text { 
+  font-size: 1.5rem; 
+  font-weight: 800; 
+  color: #333; 
+  margin: 0;
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+
+.header-nav button {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #555;
+  cursor: pointer;
+}
+
+.logout-btn-header {
+  background-color: #2a7fff !important;
+  color: white !important;
+  padding: 8px 20px !important;
+  border-radius: 10px !important;
+}

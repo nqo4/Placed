@@ -1,0 +1,39 @@
+.inquiry-page {
+  font-family: "Noto Sans KR", sans-serif;
+  background-color: #f9fafb;
+  color: #333;
+  height: auto;
+  min-height: auto;
+  display: block;
+}
+
+.inquiry-section {
+  text-align: center;
+  padding: 120px 20px 80px;
+}
+
+.inquiry-section h2 {
+  font-size: 2rem;
+  color: #2a7fff;
+  margin-bottom: 20px;
+}
+
+.empty {
+  margin: 40px 0;
+  color: #777;
+  font-size: 1.1rem;
+}
+
+.write-btn {
+  background-color: #2a7fff;
+  color: #fff;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.write-btn:hover {
+  background-color: #1b63e0;
+}

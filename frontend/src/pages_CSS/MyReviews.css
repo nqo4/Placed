@@ -1,0 +1,189 @@
+.review-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f9f9f9;
+}
+
+.review-section {
+  max-width: 800px;
+  width: 100%;
+  margin: 40px auto;
+  padding: 0 20px;
+  flex: 1;
+}
+
+.review-section h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: #222;
+}
+
+.review-count {
+  font-size: 1rem;
+  font-weight: 400;
+  color: #888;
+}
+
+.review-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.review-item {
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.review-header h4 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+}
+
+.review-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.edit-btn {
+  background: none;
+  border: 1px solid #2a7fff;
+  color: #2a7fff;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.delete-btn {
+  background: none;
+  border: 1px solid #ff4d4f;
+  color: #ff4d4f;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.edit-btn:hover { background-color: #e8f0ff; }
+.delete-btn:hover { background-color: #fff1f0; }
+
+.rating {
+  font-size: 1rem;
+  margin-bottom: 6px;
+}
+
+.review-content {
+  color: #444;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.review-date {
+  color: #aaa;
+  font-size: 0.82rem;
+}
+
+.edit-form h4 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #333;
+}
+
+.edit-rating {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.edit-rating label {
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.edit-rating select {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  font-size: 0.9rem;
+}
+
+.edit-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-size: 0.95rem;
+  resize: vertical;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+}
+
+.edit-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.save-btn {
+  background-color: #2a7fff;
+  color: white;
+  border: none;
+  padding: 7px 18px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.cancel-btn {
+  background-color: #eee;
+  color: #555;
+  border: none;
+  padding: 7px 18px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.empty {
+  color: #888;
+  margin-top: 40px;
+  text-align: center;
+}
+
+.loading {
+  text-align: center;
+  margin-top: 100px;
+  color: #888;
+}
+
+.footer {
+  text-align: center;
+  padding: 20px;
+  font-size: 0.85rem;
+  color: #aaa;
+  border-top: 1px solid #eee;
+}
+
+.footer a {
+  color: #aaa;
+  text-decoration: none;
+}

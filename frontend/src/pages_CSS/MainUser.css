@@ -1,0 +1,191 @@
+/* 전체 페이지 설정 */
+.user-page {
+  font-family: 'Noto Sans KR', sans-serif;
+  background-color: #ffffff;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 웰컴 섹션 */
+.welcome {
+  text-align: center;
+  padding: 100px 20px 60px;
+  background: linear-gradient(180deg, #f9fafc 0%, #ffffff 100%);
+}
+
+.welcome h2 {
+  font-size: 2.5rem;
+  color: #2a7fff;
+  margin-bottom: 12px;
+  font-weight: 800;
+}
+
+.welcome p {
+  font-size: 1.1rem;
+  color: #666;
+  margin-bottom: 40px;
+}
+
+/* 검색바 스타일 */
+.search-bar {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.search-bar input {
+  width: 100%;
+  padding: 15px 25px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 1rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+  outline: none;
+}
+
+.search-bar input:focus {
+  border-color: #2a7fff;
+  box-shadow: 0 0 0 3px rgba(42, 127, 255, 0.1);
+}
+
+.search-bar button {
+  padding: 0 30px;
+  background-color: #2a7fff;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+  min-width: 80px;
+}
+
+.search-bar button:hover {
+  background-color: #1b63e0;
+}
+
+/* 거리 선택 필터 */
+.distance-filter {
+  margin-top: 15px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  color: #777;
+  font-size: 0.9rem;
+}
+
+.distance-filter select {
+  padding: 5px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: white;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  outline: none;
+}
+
+/* 추천 장소 섹션 */
+.recommend {
+  padding: 60px 50px 100px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.recommend h3 {
+  font-size: 1.8rem;
+  text-align: center;
+  margin-bottom: 40px;
+  color: #333;
+  font-weight: 800;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 30px;
+  width: 100%;
+}
+
+.card {
+  background: white;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+}
+
+.card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+}
+
+.card img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.card-info {
+  padding: 20px;
+  text-align: center;
+}
+
+.card-info h4 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.card-no-image {
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f0f2f5;
+  color: #999;
+}
+
+.card-type {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 3px 10px;
+  border: 1px solid #2a7fff;
+  border-radius: 6px;
+  color: #2a7fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 10px;
+  margin-top: 10px;
+  color: #2a7fff;
+  font-size: 0.9rem;
+}
+
+/* 푸터 섹션 */
+.footer {
+  text-align: center;
+  padding: 40px;
+  border-top: 1px solid #eee;
+  font-size: 0.9rem;
+  color: #999;
+}
+
+.footer a {
+  color: #2a7fff;
+  text-decoration: none;
+  margin: 0 5px;
+}

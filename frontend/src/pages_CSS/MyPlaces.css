@@ -1,0 +1,117 @@
+.places-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f9f9f9;
+}
+
+.places-section {
+  max-width: 800px;
+  width: 100%;
+  margin: 40px auto;
+  padding: 0 20px;
+  flex: 1;
+}
+
+.places-section h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: #222;
+}
+
+.places-count {
+  font-size: 1rem;
+  font-weight: 400;
+  color: #888;
+}
+
+.places-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.place-item {
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.place-info h4 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 6px 0;
+}
+
+.place-info p {
+  font-size: 0.9rem;
+  color: #888;
+  margin: 0;
+}
+
+.delete-btn {
+  background: none;
+  border: 1px solid #ff4d4f;
+  color: #ff4d4f;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.delete-btn:hover {
+  background-color: #fff1f0;
+}
+
+.empty {
+  color: #888;
+  margin-top: 40px;
+  text-align: center;
+}
+
+.loading {
+  text-align: center;
+  margin-top: 100px;
+  color: #888;
+}
+
+.footer {
+  text-align: center;
+  padding: 20px;
+  font-size: 0.85rem;
+  color: #aaa;
+  border-top: 1px solid #eee;
+}
+
+.footer a {
+  color: #aaa;
+  text-decoration: none;
+}
+
+.place-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.detail-btn {
+  background: none;
+  border: 1px solid #2a7fff;
+  color: #2a7fff;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.detail-btn:hover {
+  background-color: #e8f0ff;
+}
