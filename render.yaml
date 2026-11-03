@@ -1,10 +1,12 @@
 # Render Blueprint: 백엔드(API)와 PostgreSQL을 한 번에 만듭니다. 프론트엔드는 Vercel에 배포합니다.
 # Render 대시보드 > New > Blueprint에서 이 저장소를 고르면 아래 구성이 생성됩니다.
+# 한국과 가까운 싱가포르 리전을 씁니다(생성 후에는 바꿀 수 없음). DB와 API는 같은 리전이어야 합니다.
 # sync: false 항목은 생성 화면에서 직접 값을 입력합니다(비밀 키는 저장소에 넣지 않습니다).
 
 databases:
   - name: placed-db
     plan: free
+    region: singapore
     databaseName: placed
     user: placed
 
@@ -13,6 +15,7 @@ services:
     name: placed-api
     runtime: python
     plan: free
+    region: singapore
     branch: db-update
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
     startCommand: gunicorn placed_backend.wsgi:application
