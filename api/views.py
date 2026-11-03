@@ -155,9 +155,14 @@ class MyInquiriesView(generics.ListAPIView):
         return Inquiry.objects.filter(user=self.request.user)
 
 class InquiryDetailView(generics.RetrieveAPIView):
-    queryset = Inquiry.objects.all()
     serializer_class = InquirySerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # 다른 사람의 문의는 존재 여부도 드러나지 않도록 404로 처리합니다.
+        if self.request.user.is_staff:
+            return Inquiry.objects.all()
+        return Inquiry.objects.filter(user=self.request.user)
 
 # --- Place & Review Views ---
 

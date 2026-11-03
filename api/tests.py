@@ -1712,6 +1712,18 @@ class FrontendCompatibilityTests(APITestCase):
         self.assertEqual(self.client.patch(reverse('admin-inquiry-answer', args=[9999]), {'answer': 'x'}).status_code,
                          status.HTTP_404_NOT_FOUND)
 
+    def test_inquiry_detail_is_owner_or_staff_only(self):
+        inquiry = Inquiry.objects.create(user=self.user, category='etc', message='내 문의')
+        other = User.objects.create_user(username='other01', password='StrongPass123')
+        url = reverse('inquiry-detail', args=[inquiry.id])
+
+        self.client.force_authenticate(user=other)
+        self.assertEqual(self.client.get(url).status_code, status.HTTP_404_NOT_FOUND)
+        self.client.force_authenticate(user=self.user)
+        self.assertEqual(self.client.get(url).status_code, status.HTTP_200_OK)
+        self.client.force_authenticate(user=self.staff)
+        self.assertEqual(self.client.get(url).status_code, status.HTTP_200_OK)
+
     def test_user_cannot_set_answer_when_creating_inquiry(self):
         self.client.force_authenticate(user=self.user)
         res = self.client.post(reverse('create-inquiry'), {'category': 'etc', 'message': '문의', 'answer': '셀프 답변'})
