@@ -1,0 +1,63 @@
+# Render Blueprint: 백엔드(API), 프론트엔드(정적 사이트), PostgreSQL을 한 번에 만듭니다.
+# Render 대시보드 > New > Blueprint에서 이 저장소를 고르면 아래 구성이 생성됩니다.
+# sync: false 항목은 생성 화면에서 직접 값을 입력합니다(비밀 키는 저장소에 넣지 않습니다).
+
+databases:
+  - name: placed-db
+    plan: free
+    databaseName: placed
+    user: placed
+
+services:
+  - type: web
+    name: placed-api
+    runtime: python
+    plan: free
+    branch: db-update
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+    startCommand: gunicorn placed_backend.wsgi:application
+    healthCheckPath: /admin/login/
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DATABASE_URL
+        fromDatabase:
+          name: placed-db
+          property: connectionString
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "False"
+      # 프론트엔드 주소. 예: https://placed-web.onrender.com
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL_NAME
+        value: gemini-3.5-flash-lite
+      - key: NAVER_CLIENT_ID
+        sync: false
+      - key: NAVER_CLIENT_SECRET
+        sync: false
+      - key: AD_EXCLUDE_THRESHOLD
+        value: "70"
+
+  - type: web
+    name: placed-web
+    runtime: static
+    repo: https://github.com/tjsals021127-wq/Placed
+    branch: master
+    buildCommand: npm ci && npm run build
+    staticPublishPath: build
+    # 새로고침하거나 /place/3 같은 주소로 바로 들어와도 React 화면이 열리도록 합니다.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      # 백엔드 주소. 예: https://placed-api.onrender.com
+      - key: REACT_APP_API_URL
+        sync: false
+      # 빌드 경고를 오류로 처리하지 않도록 합니다.
+      - key: CI
+        value: "false"
