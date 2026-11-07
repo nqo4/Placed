@@ -16,7 +16,7 @@ services:
     runtime: python
     plan: free
     region: singapore
-    branch: db-update
+    branch: main
     # 프론트엔드(frontend/)만 바뀐 커밋은 API를 다시 배포하지 않습니다.
     buildFilter:
       ignoredPaths:
