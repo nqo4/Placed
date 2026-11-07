@@ -210,13 +210,52 @@ class SimilarPlacesView(APIView):
         return Response({'results': results}, status=status.HTTP_200_OK)
 
 
+PLACE_REVIEW_SOURCE_LIMIT = 5  # 장소 상세에 함께 보여줄 수집 후기(블로그·카페) 최대 개수
+
+
 class PlaceReviewsView(generics.ListAPIView):
+    """
+    사용자가 직접 쓴 리뷰와, 광고가 아니라고 판정된 블로그·카페 후기를 함께 돌려줍니다.
+    수집 후기는 광고 확률이 낮은 순으로 최대 PLACE_REVIEW_SOURCE_LIMIT개이며, 수집기가 만든
+    대표 리뷰(Review)는 같은 글이 수집 후기로 이미 나오므로 중복해서 넣지 않습니다.
+    """
     serializer_class = ReviewSerializer
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
         place_id = self.kwargs['place_id']
         return Review.objects.filter(place_id=place_id)
+
+    def list(self, request, *args, **kwargs):
+        place_id = self.kwargs['place_id']
+        ad_threshold = getattr(settings, 'AD_EXCLUDE_THRESHOLD', 70)
+        sources = list(
+            ReviewSource.objects.filter(
+                place_id=place_id, is_review=True, has_place_info=True,
+                analysis_failed=False, ad_probability__lt=ad_threshold,
+            ).select_related('place').order_by('ad_probability', 'id')[:PLACE_REVIEW_SOURCE_LIMIT]
+        )
+        crawled_contents = set(
+            ReviewSource.objects.filter(place_id=place_id).values_list('content_text', flat=True)
+        )
+        user_reviews = [r for r in self.get_queryset() if r.content not in crawled_contents]
+
+        results = [{**data, 'is_external': False} for data in ReviewSerializer(user_reviews, many=True).data]
+        results += [{
+            # 사용자 리뷰 id와 겹치지 않도록 문자열 id를 씁니다.
+            'id': f'source-{s.id}',
+            'place': s.place_id,
+            'place_name': s.place.name,
+            'user': None,
+            'content': s.content_text,
+            'rating': None,
+            'created_at': s.created_at,
+            'title': s.title,
+            'url': s.url,
+            'source_type': s.source_type,
+            'is_external': True,
+        } for s in sources]
+        return Response(results, status=status.HTTP_200_OK)
 
 class CreateReviewView(generics.CreateAPIView):
     queryset = Review.objects.all()
@@ -261,10 +300,7 @@ class SearchView(APIView):
         if request.user and request.user.is_authenticated:
             SearchLog.objects.create(user=request.user, keyword=keyword)
 
-        ad_threshold = getattr(settings, 'AD_EXCLUDE_THRESHOLD', 70)
-
         results = []
-        excluded_ad_count = 0
         for place in places:
             images = PlaceImage.objects.filter(place=place)
             latest_review = Review.objects.filter(place=place).first()
@@ -294,13 +330,6 @@ class SearchView(APIView):
                         ai_summary=ai_reason
                     )
 
-            # [추가] SFR-002/SFR-004/SFR-008: 기존에는 광고 확률을 계산만 하고 실제로는
-            # 결과에서 제외하지 않았습니다. 요구사항대로 임계치 이상이면 결과에서 제외하고,
-            # 총 제외 개수를 함께 응답합니다.
-            if ad_probability >= ad_threshold:
-                excluded_ad_count += 1
-                continue
-
             results.append({
                 'id': place.id,
                 'name': place.name,
@@ -312,9 +341,11 @@ class SearchView(APIView):
                 'created_at': place.created_at.strftime('%Y-%m-%d')
             })
 
+        # 광고성 글은 장소 단위가 아니라 글 단위로 걸러내므로 장소는 모두 보여줍니다.
+        # excluded_ad_count는 기존 응답 형식을 유지하기 위해 0으로 남겨 둡니다.
         return Response({
             'results': results,
-            'excluded_ad_count': excluded_ad_count,
+            'excluded_ad_count': 0,
         }, status=status.HTTP_200_OK)
 
 
@@ -449,11 +480,8 @@ class PlaceKeywordSearchView(APIView):
         if request.user.is_authenticated:
             SearchLog.objects.create(user=request.user, keyword=keyword)
 
+        # 광고성 글이 많은 장소도 빼지 않고, 글 단위로 걸러낸 개수만 함께 보여줍니다.
         ad_threshold = getattr(settings, 'AD_EXCLUDE_THRESHOLD', 70)
-        ad_names = set(
-            PlaceAnalysis.objects.filter(ad_probability__gte=ad_threshold).values_list('name', flat=True)
-        )
-        places = [place for place in places if place.name not in ad_names]
         review_counts = _review_counts_by_place([place.id for place in places], ad_threshold)
 
         results = []

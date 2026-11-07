@@ -27,12 +27,11 @@ import math
 import re
 from collections import Counter
 
-from django.conf import settings
 from django.contrib.postgres.search import TrigramSimilarity
 from django.db.models import Q
 
 from .keyword_taxonomy import PLACE_TYPE_ORDER, classify_place_type
-from .models import Place, PlaceAnalysis, PlaceKeyword, PlaceViewLog, SearchLog
+from .models import Place, PlaceKeyword, PlaceViewLog, SearchLog
 
 # [PostgreSQL pg_trgm 기반 오타/유사 표기 허용] Elasticsearch 없이, 이미 쓰고 있는
 # PostgreSQL의 pg_trgm 확장(마이그레이션 0011_pg_trgm_extension 참고)만으로 "자연어
@@ -245,8 +244,7 @@ def similar_places_for(place, limit=SIMILAR_PLACES_LIMIT):
     곳도 모두 나올 수 있음).
 
     후보 안에서의 순서는 두 신호를 더한 점수로 정렬합니다 - 비슷하면서 동시에 가까운
-    곳이 가장 먼저 나옵니다. 광고로 판정된 장소(SearchView와 동일한 AD_EXCLUDE_THRESHOLD
-    기준)는 추천하지 않습니다.
+    곳이 가장 먼저 나옵니다. 광고성 글은 글 단위로 걸러내므로 장소는 제외하지 않습니다.
 
     좌표가 없는 장소(이 기능 추가 전에 등록돼 latitude/longitude가 비어 있음)는 거리
     계산에서 제외되고 키워드 유사도만으로 평가됩니다 - 재수집하면 좌표가 채워집니다.
@@ -256,12 +254,7 @@ def similar_places_for(place, limit=SIMILAR_PLACES_LIMIT):
     """
     base_keywords = place_keyword_set(place)
     base_has_coords = place.latitude is not None and place.longitude is not None
-    excluded_names = _ad_excluded_place_names()
-
-    candidates = (
-        Place.objects.exclude(id=place.id)
-        .exclude(name__in=excluded_names)[:SIMILAR_PLACES_CANDIDATE_LIMIT]
-    )
+    candidates = Place.objects.exclude(id=place.id)[:SIMILAR_PLACES_CANDIDATE_LIMIT]
 
     scored = []
     for candidate in candidates:
@@ -319,14 +312,6 @@ def _matched_keyword_counts(search_tokens, keyword_types):
     return counts
 
 
-def _ad_excluded_place_names():
-    """검색(SearchView)과 동일한 기준(AD_EXCLUDE_THRESHOLD)으로 광고성 장소 이름 집합을 반환합니다."""
-    ad_threshold = getattr(settings, 'AD_EXCLUDE_THRESHOLD', 70)
-    return set(
-        PlaceAnalysis.objects.filter(ad_probability__gte=ad_threshold).values_list('name', flat=True)
-    )
-
-
 def _pick_best_place(places, location_counts, other_keyword_counts):
     """
     후보 장소들 중 (1) 사용자가 주로 검색한 동네와 겹치는 점수, (2) 그다음 주로 검색한
@@ -354,12 +339,11 @@ def daily_recommended_places(user):
     1) 사용자가 주로 검색한 동네(location 키워드)와 일치하는지
     2) 그 다음 사용자가 주로 검색한 연관 키워드(종류/분위기)와 얼마나 겹치는지
 
-    광고로 판정된 장소(SearchView와 동일한 AD_EXCLUDE_THRESHOLD 기준)는 후보에서
-    제외합니다.
+    광고성 글은 글 단위로 걸러내므로 장소는 후보에서 제외하지 않습니다.
 
     반환값: (results, has_search_history)
     - results: {'restaurant': Place|None, 'cafe': Place|None, 'bar': Place|None}
-      (검색 기록이 있어도 그 카테고리에 맞는/광고가 아닌 후보가 없으면 None일 수 있습니다)
+      (검색 기록이 있어도 그 카테고리에 맞는 후보가 없으면 None일 수 있습니다)
     - has_search_history: 검색 기록이 하나라도 있었는지 여부(recommend_places_for_user()의
       has_history와 동일한 용도 - 화면에 "기록 없음" 안내를 보여줄지 판단하는 데 사용).
     """
@@ -376,11 +360,8 @@ def daily_recommended_places(user):
     location_counts = _matched_keyword_counts(search_tokens, ['location'])
     other_keyword_counts = _matched_keyword_counts(search_tokens, ['category', 'mood'])
 
-    excluded_names = _ad_excluded_place_names()
     candidates_by_type = {place_type: [] for place_type in PLACE_TYPE_ORDER}
     for place in Place.objects.all()[:CANDIDATE_LIMIT]:
-        if place.name in excluded_names:
-            continue
         place_type = classify_place_type(category_tokens(place.category))
         if place_type:
             candidates_by_type[place_type].append(place)

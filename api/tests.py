@@ -128,13 +128,14 @@ class SearchAdFilterTests(APITestCase):
             is_ad=True, ad_probability=90, ai_summary='협찬 문구 발견'
         )
 
-    def test_high_ad_probability_excluded_and_counted(self):
+    def test_high_ad_probability_place_is_still_listed(self):
+        # 광고성 글은 글 단위로 걸러내므로 장소 자체는 검색 결과에서 빼지 않습니다.
         res = self.client.get(reverse('search'), {'keyword': '진짜맛집'})
         self.assertEqual(res.status_code, 200)
         names = [r['name'] for r in res.data['results']]
         self.assertIn(self.genuine_place.name, names)
-        self.assertNotIn(self.ad_place.name, names)
-        self.assertEqual(res.data['excluded_ad_count'], 1)
+        self.assertIn(self.ad_place.name, names)
+        self.assertEqual(res.data['excluded_ad_count'], 0)
 
     def test_authenticated_search_is_logged(self):
         self.client.force_authenticate(user=self.user)
@@ -446,9 +447,8 @@ class DailyRecommendationHelperTests(TestCase):
         self.assertTrue(has_history)
         self.assertEqual(results['cafe'], same_region_matching_mood)
 
-    def test_excludes_ad_flagged_places(self):
+    def test_ad_flagged_place_can_still_be_recommended(self):
         ad_cafe = self._make_place('광고카페', '대전 유성구 궁동', '카페', '대전 유성구')
-        genuine_cafe = self._make_place('진짜카페', '대전 유성구 궁동', '카페', '대전 유성구')
         PlaceAnalysis.objects.create(
             name=ad_cafe.name, content_text='협찬', is_ad=True, ad_probability=90, ai_summary='광고'
         )
@@ -457,7 +457,7 @@ class DailyRecommendationHelperTests(TestCase):
         results, has_history = recommendation.daily_recommended_places(self.user)
 
         self.assertTrue(has_history)
-        self.assertEqual(results['cafe'], genuine_cafe)
+        self.assertEqual(results['cafe'], ad_cafe)
 
     def test_returns_one_place_per_type(self):
         self._make_place('식당1', '대전 유성구', '음식점>한식', '대전 유성구')
@@ -1740,14 +1740,33 @@ class FrontendCompatibilityTests(APITestCase):
             self.client.force_authenticate(user=self.staff)
             self.assertEqual(self.client.get(reverse(name)).status_code, status.HTTP_200_OK)
 
-    def test_keyword_search_returns_list_and_excludes_known_ads(self):
+    def test_keyword_search_returns_list_and_keeps_ad_flagged_places(self):
         res = self.client.get(reverse('elastic-search'), {'search': '호환카페'})
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual([p['id'] for p in res.data], [self.place.id])
 
         PlaceAnalysis.objects.create(name='호환카페', content_text='광고', is_ad=True, ad_probability=95)
         res = self.client.get(reverse('elastic-search'), {'search': '호환카페'})
-        self.assertEqual(res.data, [])
+        self.assertEqual([p['id'] for p in res.data], [self.place.id])
+
+    def test_place_reviews_include_non_ad_sources_without_duplicates(self):
+        crawler = User.objects.create_user(username='crawler01', password='StrongPass123')
+        Review.objects.create(place=self.place, user=crawler, content='글0', rating=5)
+        Review.objects.create(place=self.place, user=self.user, content='직접 쓴 리뷰', rating=4)
+        for n, prob in enumerate([10, 90, 20, 30, 40, 50, 60], start=0):
+            ReviewSource.objects.create(place=self.place, source_type='blog', url=f'http://b/{n}',
+                                        title=f'제목{n}', content_text=f'글{n}', ad_probability=prob)
+        ReviewSource.objects.create(place=self.place, source_type='blog', url='http://b/job',
+                                    content_text='구인', ad_probability=5, is_review=False)
+
+        res = self.client.get(reverse('place-reviews', args=[self.place.id]))
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual([r['content'] for r in res.data if not r['is_external']], ['직접 쓴 리뷰'])
+        external = [r for r in res.data if r['is_external']]
+        self.assertEqual([r['content'] for r in external], ['글0', '글2', '글3', '글4', '글5'])
+        self.assertEqual(external[0]['url'], 'http://b/0')
+        self.assertIsNone(external[0]['rating'])
 
     def test_keyword_search_includes_review_counts(self):
         def source(n, **fields):
