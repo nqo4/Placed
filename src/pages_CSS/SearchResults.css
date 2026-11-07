@@ -129,6 +129,17 @@ CSS
   margin: 5px 0 10px 0;
 }
 
+.card-review-count {
+  font-size: 0.85rem;
+  color: #888;
+  margin: -4px 0 10px 0;
+}
+
+.card-review-count .ad-excluded {
+  color: #dc3545;
+  font-weight: 600;
+}
+
 .card-trust-value {
   color: #2a7fff;
   font-weight: 800;
