@@ -5,7 +5,9 @@ from django.contrib.auth import get_user_model, authenticate
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import PlaceAnalysis, Place, PlaceImage, Review, Inquiry, SearchLog, PlaceViewLog
+from django.db.models import Count, Q
+
+from .models import PlaceAnalysis, Place, PlaceImage, Review, ReviewSource, Inquiry, SearchLog, PlaceViewLog
 from .serializers import (
     UserSerializer, SignupSerializer, PlaceSerializer,
     ReviewSerializer, InquirySerializer, InquiryAnswerSerializer, PlaceImageUploadSerializer,
@@ -451,11 +453,12 @@ class PlaceKeywordSearchView(APIView):
         ad_names = set(
             PlaceAnalysis.objects.filter(ad_probability__gte=ad_threshold).values_list('name', flat=True)
         )
+        places = [place for place in places if place.name not in ad_names]
+        review_counts = _review_counts_by_place([place.id for place in places], ad_threshold)
 
         results = []
         for place in places:
-            if place.name in ad_names:
-                continue
+            counts = review_counts.get(place.id, {})
             first_image = PlaceImage.objects.filter(place=place).first()
             image_url = (
                 PlaceImageSerializer(first_image, context={'request': request}).data['url']
@@ -468,8 +471,30 @@ class PlaceKeywordSearchView(APIView):
                 'description': place.description,
                 'created_at': place.created_at,
                 'image_url': image_url or '',
+                # "후기 n개 중 광고 m개 제외" 표시용. 글이 없어도 항상 0으로 내려줍니다.
+                'review_total': counts.get('total', 0),
+                'ad_excluded': counts.get('ad', 0),
+                'review_counted': counts.get('total', 0) - counts.get('ad', 0),
             })
         return Response(results, status=status.HTTP_200_OK)
+
+
+def _review_counts_by_place(place_ids, ad_threshold):
+    """
+    장소별 후기 집계를 한 번의 쿼리로 구합니다. 후기는 AI가 실제 후기(is_review)이고 장소 정보가
+    있다고(has_place_info) 판정한 글 중 분석에 성공한 글이며, 그중 광고 확률이 기준 이상인 글을
+    제외된 광고로 셉니다. 공고·무관한 글과 분석 실패 글은 처음부터 후기 수에 넣지 않습니다.
+    """
+    valid = Q(is_review=True, has_place_info=True, analysis_failed=False)
+    rows = (
+        ReviewSource.objects.filter(place_id__in=place_ids)
+        .values('place_id')
+        .annotate(
+            total=Count('id', filter=valid),
+            ad=Count('id', filter=valid & Q(ad_probability__gte=ad_threshold)),
+        )
+    )
+    return {row['place_id']: row for row in rows}
 
 
 # --- Admin Views ---

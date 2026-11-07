@@ -1749,6 +1749,28 @@ class FrontendCompatibilityTests(APITestCase):
         res = self.client.get(reverse('elastic-search'), {'search': '호환카페'})
         self.assertEqual(res.data, [])
 
+    def test_keyword_search_includes_review_counts(self):
+        def source(n, **fields):
+            ReviewSource.objects.create(place=self.place, source_type='blog', url=f'http://b/{n}',
+                                        content_text=f'글{n}', **fields)
+        source(1, ad_probability=10)
+        source(2, ad_probability=90)
+        source(3, ad_probability=70)
+        source(4, ad_probability=95, is_review=False, exclude_reason='job_posting')
+        source(5, ad_probability=50, analysis_failed=True)
+        bare = Place.objects.create(name='호환카페 2호점', address='대전 유성구')
+
+        res = self.client.get(reverse('elastic-search'), {'search': '호환카페'})
+        by_id = {p['id']: p for p in res.data}
+        self.assertEqual(
+            {k: by_id[self.place.id][k] for k in ('review_total', 'ad_excluded', 'review_counted')},
+            {'review_total': 3, 'ad_excluded': 2, 'review_counted': 1},
+        )
+        self.assertEqual(
+            {k: by_id[bare.id][k] for k in ('review_total', 'ad_excluded', 'review_counted')},
+            {'review_total': 0, 'ad_excluded': 0, 'review_counted': 0},
+        )
+
     def test_place_detail_includes_analysis(self):
         res = self.client.get(reverse('place-detail', args=[self.place.id]))
         self.assertIsNone(res.data['non_ad_probability'])
