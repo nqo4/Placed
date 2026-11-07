@@ -683,6 +683,55 @@ class NaverReviewRefreshTests(TestCase):
             return self._items_response(items if 'search/v1/blog' in url else [])
         return get_side_effect
 
+    @patch('api.naver_miner.requests.get')
+    def test_collects_next_pages_and_neighborhood_query_until_enough(self, mock_get):
+        place = Place.objects.create(name="표본카페", address="대전 유성구 봉명동 1")
+        requested = []
+
+        def page(prefix, count, matching):
+            return [{"title": f"표본카페 {prefix}{i}" if i < matching else f"다른곳 {prefix}{i}",
+                     "description": "후기", "link": f"http://{prefix}/{i}"} for i in range(count)]
+
+        def get_side_effect(url, headers=None, timeout=None):
+            query, start = _query_param(url), _query_param(url, 'start') or '1'
+            requested.append((url.split('/')[-1].split('?')[0], query, start))
+            if 'search/v1/blog' not in url:
+                return self._items_response([])
+            if '봉명동' in query:
+                return self._items_response(page('nb', 5, 5))
+            if start == '1':
+                return self._items_response(page('p1', 100, 10))
+            if start == '101':
+                return self._items_response(page('p2', 30, 10))
+            return self._items_response([])
+
+        mock_get.side_effect = get_side_effect
+        selected, _ = naver_miner._collect_review_source_candidates(place, {}, 0)
+
+        self.assertEqual(len(selected), 25)
+        blog_starts = [(q, s) for kind, q, s in requested if kind == 'blog']
+        self.assertIn(('표본카페 대전 유성구', '101'), blog_starts)
+        self.assertNotIn(('표본카페 대전 유성구', '201'), blog_starts)
+        self.assertIn(('표본카페 봉명동', '1'), blog_starts)
+
+    @patch('api.naver_miner.extract_mood_keywords', return_value=[])
+    @patch('api.naver_miner.analyze_review')
+    @patch('api.naver_miner.requests.get')
+    def test_fewer_than_refreshes_only_places_short_of_reviews(self, mock_get, mock_analyze, mock_mood):
+        short = Place.objects.create(name="부족카페", address="대전 유성구")
+        enough = Place.objects.create(name="충분카페", address="대전 유성구")
+        for n in range(5):
+            ReviewSource.objects.create(place=enough, source_type='blog', url=f'http://e/{n}',
+                                        content_text=f'글{n}', ad_probability=10)
+        mock_get.side_effect = lambda url, headers=None, timeout=None: self._items_response([])
+        mock_analyze.return_value = {'is_ad': False, 'non_ad_probability': 50, 'reason': '안내'}
+
+        naver_miner.refresh_existing_places(request_interval=0, fewer_than=5)
+
+        searched = {_query_param(c.args[0]) for c in mock_get.call_args_list}
+        self.assertEqual(searched, {'부족카페 대전 유성구'})
+        self.assertEqual(enough.review_sources.count(), 5)
+
     @patch('api.naver_miner.extract_mood_keywords', return_value=[])
     @patch('api.naver_miner.analyze_review')
     @patch('api.naver_miner.requests.get')
@@ -1094,7 +1143,7 @@ class NaverReviewRefreshTests(TestCase):
                 {"title": "알텐데 대전 유성구 맛집", "description": "정말 좋았어요", "link": "http://blog.example/1"},
                 {"title": "와이프도 알텐데", "description": "그냥 하는 말이었다", "link": "http://blog.example/2"},
             ])
-            candidates = naver_miner._extract_candidates_from_search(
+            candidates, _ = naver_miner._extract_candidates_from_search(
                 'blog', '알텐데 대전 유성구', {}, '알텐데',
                 [(0, '궁동'), (1, '대전 유성구')],
             )
@@ -1113,7 +1162,7 @@ class NaverReviewRefreshTests(TestCase):
                 {"title": "알텐데 체험단 모집합니다", "description": "많은 신청 바랍니다", "link": "http://blog.example/2"},
                 {"title": "알텐데 인근 오피스텔 분양", "description": "모델하우스 방문 예약", "link": "http://blog.example/3"},
             ])
-            candidates = naver_miner._extract_candidates_from_search(
+            candidates, _ = naver_miner._extract_candidates_from_search(
                 'blog', '알텐데', {}, '알텐데', []
             )
 

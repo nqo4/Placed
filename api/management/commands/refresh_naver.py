@@ -39,6 +39,14 @@ class Command(BaseCommand):
             '--only-failed', action='store_true',
             help='AI 분석 실패 기록이 남은 장소만 다시 분석합니다. 크레딧이 소진되면 즉시 중단합니다.'
         )
+        parser.add_argument(
+            '--fewer-than', type=int, default=None,
+            help='광고가 아닌 후기가 이 수보다 적은 장소만 글을 더 모아 다시 분석합니다. 예: --fewer-than 5'
+        )
+        parser.add_argument(
+            '--limit', type=int, default=None,
+            help='처리할 장소 수 상한. 시험 삼아 몇 곳만 돌려볼 때 사용하세요.'
+        )
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.NOTICE('[refresh_naver] 장소 리뷰 최신화를 시작합니다...'))
@@ -47,6 +55,8 @@ class Command(BaseCommand):
                 request_interval=options['interval'],
                 only_new=options['only_new'],
                 only_failed=options['only_failed'],
+                fewer_than=options['fewer_than'],
+                limit=options['limit'],
             )
         except GeminiCreditsDepleted:
             raise CommandError('Gemini 크레딧이 소진되어 중단했습니다. 충전 후 다시 실행하세요.')

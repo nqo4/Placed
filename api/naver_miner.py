@@ -123,7 +123,7 @@ from urllib.parse import quote
 import requests
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.db.models import Q
+from django.db.models import Count, Q
 
 from .gemini_service import analyze_review, extract_mood_keywords
 from .keyword_taxonomy import MAX_MOOD_KEYWORDS_PER_PLACE, MOOD_KEYWORDS
@@ -159,7 +159,9 @@ AUTO_COLLECT_MAX_SECONDS_PER_COMBO = 60  # 조합 1개당 최대 소요 시간(�
 # 한 번의 요청으로 후보를 최대한 넉넉히 모은 뒤 장소명이 포함된 것만 걸러냅니다.
 REVIEW_SEARCH_DISPLAY = 100
 MIN_REVIEW_SOURCES = 10  # 장소 하나당 목표로 모으는 최소 리뷰 소스 수 (부족하면 모은 만큼만 사용)
-MAX_REVIEW_SOURCES = 15  # AI 분석 비용/시간을 통제하기 위한 상한
+# AI 분석 비용/시간을 통제하기 위한 상한. 광고 글을 빼고도 후기가 남도록 15에서 40으로 늘렸습니다.
+MAX_REVIEW_SOURCES = getattr(settings, 'MAX_REVIEW_SOURCES', 40)
+REVIEW_SEARCH_MAX_PAGES = 3  # 검색어 하나당 넘겨 볼 최대 페이지 수 (페이지당 100건)
 
 # [비-리뷰 콘텐츠 사전 차단] 리뷰 성격이 아예 아닌 글(공고/모집/분양 정보 등)은 AI 분석으로
 # 보낼 필요도 없이 여기서 원천 차단합니다 - 흔한 문구를 미리 걸러 후보 자체에서 제외해
@@ -751,7 +753,7 @@ def _compute_match_tier(title, desc, signal_tiers):
     return min(matched_tiers) if matched_tiers else 3
 
 
-def _extract_candidates_from_search(search_type, search_query, headers, refined_name_short, signal_tiers):
+def _extract_candidates_from_search(search_type, search_query, headers, refined_name_short, signal_tiers, start=1):
     """
     블로그/카페글 검색 결과 중 장소명이 제목/본문에 포함된 것만 리뷰 소스 후보로 추출합니다.
 
@@ -765,16 +767,16 @@ def _extract_candidates_from_search(search_type, search_query, headers, refined_
     건을 채택할지는 이 함수를 호출하는 _collect_review_source_candidates()가 결정합니다
     - 등급이 낮을수록(더 확실할수록) 먼저 채택됩니다.
     """
-    url = _search_url(search_type, search_query, REVIEW_SEARCH_DISPLAY)
+    url = _search_url(search_type, search_query, REVIEW_SEARCH_DISPLAY, start=start)
     response = _request_with_retry(url, headers)
     if not response:
-        return []
+        return [], 0
 
     try:
         items = response.json().get("items", [])
     except ValueError:
         logger.error("%s 검색 응답 JSON 파싱 실패: query=%s", search_type, search_query)
-        return []
+        return [], 0
 
     candidates = []
     for it in items:
@@ -799,7 +801,33 @@ def _extract_candidates_from_search(search_type, search_query, headers, refined_
             "match_tier": _compute_match_tier(title, desc, signal_tiers),
         })
 
-    return candidates
+    # 두 번째 값은 검색 API가 돌려준 원본 개수로, 다음 페이지가 더 있는지 판단하는 데 씁니다.
+    return candidates, len(items)
+
+
+def _search_review_pages(search_type, search_query, headers, refined_name_short, signal_tiers,
+                         request_interval, seen_urls, wanted):
+    """
+    [표본 확대] 한 검색어로 블로그 또는 카페글 검색 결과를 페이지 단위로 넘기며 후보를 모읍니다.
+    후보가 wanted건 모이거나, 검색 결과가 더 없거나(한 페이지가 꽉 차지 않음),
+    REVIEW_SEARCH_MAX_PAGES에 도달하면 멈춥니다. seen_urls로 다른 검색어·페이지와의 중복을 막습니다.
+    """
+    found = []
+    for page in range(REVIEW_SEARCH_MAX_PAGES):
+        start = 1 + page * REVIEW_SEARCH_DISPLAY
+        candidates, raw_count = _extract_candidates_from_search(
+            search_type, search_query, headers, refined_name_short, signal_tiers, start=start
+        )
+        for cand in candidates:
+            key = cand["url"] or cand["content"]
+            if key in seen_urls:
+                continue
+            seen_urls.add(key)
+            found.append(cand)
+        if len(found) >= wanted or raw_count < REVIEW_SEARCH_DISPLAY:
+            break
+        time.sleep(request_interval)
+    return found
 
 
 def _collect_review_source_candidates(place, headers, request_interval):
@@ -823,6 +851,10 @@ def _collect_review_source_candidates(place, headers, request_interval):
 
     MIN_REVIEW_SOURCES건에 못 미치면 경고만 남기고 모은 만큼 그대로 사용합니다(장소가
     실제로 온라인에 언급이 적을 수 있으므로 실패로 취급하지 않습니다).
+
+    [표본 확대] 광고 글을 걸러낸 뒤에도 후기가 충분히 남도록, 첫 페이지에서 MAX_REVIEW_SOURCES건을
+    못 채우면 다음 페이지(start=101, 201 ...)를 요청하고, 그래도 부족하면 "장소명 + 동네"
+    검색어로 한 번 더 찾습니다.
     """
     refined_name_short = _refined_short_name(place.name)
     neighborhood = neighborhood_hint(place.address)
@@ -835,13 +867,25 @@ def _collect_review_source_candidates(place, headers, request_interval):
     ]
     signal_tiers = [(tier, tok) for tier, tok in signal_tiers if tok]
 
-    blog_candidates = _extract_candidates_from_search(
-        'blog', search_query, headers, refined_name_short, signal_tiers
-    )
-    time.sleep(request_interval)
-    cafe_candidates = _extract_candidates_from_search(
-        'cafearticle', search_query, headers, refined_name_short, signal_tiers
-    )
+    queries = [search_query]
+    if neighborhood and neighborhood not in search_query:
+        queries.append(f"{refined_name_short} {neighborhood}")
+
+    seen_urls = set()
+    blog_candidates, cafe_candidates = [], []
+    for query in queries:
+        wanted = MAX_REVIEW_SOURCES - len(blog_candidates) - len(cafe_candidates)
+        if wanted <= 0:
+            break
+        blog_candidates += _search_review_pages(
+            'blog', query, headers, refined_name_short, signal_tiers, request_interval, seen_urls, wanted
+        )
+        time.sleep(request_interval)
+        wanted = MAX_REVIEW_SOURCES - len(blog_candidates) - len(cafe_candidates)
+        cafe_candidates += _search_review_pages(
+            'cafearticle', query, headers, refined_name_short, signal_tiers, request_interval, seen_urls,
+            max(wanted, MAX_REVIEW_SOURCES // 2),
+        )
 
     def _interleave(items_a, items_b):
         merged = []
@@ -1141,7 +1185,7 @@ def _refresh_place_reviews(place, headers, default_user, request_interval):
     )
 
 
-def refresh_existing_places(request_interval=0.2, only_new=False, only_failed=False):
+def refresh_existing_places(request_interval=0.2, only_new=False, only_failed=False, fewer_than=None, limit=None):
     """
     [리뷰 최신화 로직 - 장소 수집과 분리] 새로 장소를 찾지 않고(지역 검색 API 호출 없음),
     DB에 이미 등록된 장소들의 리뷰만 블로그+카페글에서 모아 평균 광고 확률로 갱신합니다.
@@ -1155,6 +1199,10 @@ def refresh_existing_places(request_interval=0.2, only_new=False, only_failed=Fa
     only_failed=True면 AI 분석 실패 기록이 남은 장소만 대상으로 합니다. Gemini 크레딧이
     소진되면 그 장소의 기존 데이터를 그대로 두고 즉시 중단하므로, 충전 후 다시 실행하면
     남은 장소부터 이어집니다. (관리 명령: python manage.py refresh_naver --only-failed)
+
+    fewer_than=N이면 광고가 아닌 후기가 N개 미만인 장소만 다시 모읍니다(표본 확대용).
+    limit을 주면 앞에서부터 그 수만큼만 처리합니다.
+    (관리 명령: python manage.py refresh_naver --fewer-than 5 [--limit 10])
     """
     headers = _get_naver_headers()
     if not headers:
@@ -1176,8 +1224,20 @@ def refresh_existing_places(request_interval=0.2, only_new=False, only_failed=Fa
         places = list(Place.objects.filter(
             Q(review_sources__analysis_failed=True) | Q(name__in=failed_names)
         ).distinct())
+    elif fewer_than is not None:
+        ad_threshold = getattr(settings, 'AD_EXCLUDE_THRESHOLD', 70)
+        counted = Q(
+            review_sources__is_review=True, review_sources__has_place_info=True,
+            review_sources__analysis_failed=False, review_sources__ad_probability__lt=ad_threshold,
+        )
+        places = list(
+            Place.objects.annotate(counted=Count('review_sources', filter=counted))
+            .filter(counted__lt=fewer_than).order_by('counted', 'id')
+        )
     else:
         places = list(Place.objects.all())
+    if limit is not None:
+        places = places[:limit]
 
     logger.info(
         "기존 장소 %s건의 리뷰 최신화를 시작합니다%s.",
