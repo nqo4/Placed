@@ -1,4 +1,4 @@
-// 백엔드 서버 주소 — 배포 시 여기서 변경
+// 백엔드 서버 주소 (배포 시 변경)
 export const BASE_URL = "http://localhost:8000";
 
 

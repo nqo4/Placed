@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
@@ -8,10 +8,10 @@ import "../pages_CSS/PlaceDetail.css";
 function ImageSlider({ images }) {
   const [current, setCurrent] = useState(0);
 
-  // PlaceImage 데이터가 없는 장소에서 images가 빈 배열로 올 경우 슬라이더 크래시 방지 — 틀은 유지하고 '이미지 준비 중' 표시
+  // 이미지 없으면 '이미지 준비 중' 표시
   if (!images || images.length === 0) {
     return (
-      <div style={{ position: "relative", width: "100%", height: "300px", borderRadius: "12px", overflow: "hidden", background: "#eee", display: "flex", alignItems: "center", justifyContent: "center", color: "#aaa", fontSize: "1rem" }}>
+      <div className="image-slider" style={{ position: "relative", width: "100%", borderRadius: "12px", overflow: "hidden", background: "#eee", display: "flex", alignItems: "center", justifyContent: "center", color: "#aaa", fontSize: "1rem" }}>
         이미지 준비 중
       </div>
     );
@@ -21,7 +21,7 @@ function ImageSlider({ images }) {
   const next = () => setCurrent((current + 1) % images.length);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "300px", borderRadius: "12px", overflow: "hidden", background: "#eee" }}>
+    <div className="image-slider" style={{ position: "relative", width: "100%", borderRadius: "12px", overflow: "hidden", background: "#eee" }}>
       <img
         src={typeof images[current] === "string" ? images[current] : images[current]?.url}
         alt={`슬라이드 ${current + 1}`}
@@ -49,6 +49,42 @@ function ImageSlider({ images }) {
           }} />
         ))}
       </div>
+    </div>
+  );
+}
+
+function PlaceMap({ name, lat, lng }) {
+  const mapRef = useRef(null);
+  const isMobile = window.matchMedia("(max-width: 768px)").matches;
+
+  useEffect(() => {
+    if (!window.kakao?.maps || !mapRef.current) return;
+    const { kakao } = window;
+    const position = new kakao.maps.LatLng(lat, lng);
+    const map = new kakao.maps.Map(mapRef.current, { center: position, level: 3 });
+    new kakao.maps.Marker({ map, position });
+
+    // 폰은 스크롤 방해 안 되게 고정, PC는 드래그/확대 가능
+    if (isMobile) {
+      map.setDraggable(false);
+      map.setZoomable(false);
+    } else {
+      map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
+    }
+  }, [lat, lng, isMobile]);
+
+  const kakaoMapUrl = `https://map.kakao.com/link/map/${encodeURIComponent(name)},${lat},${lng}`;
+
+  return (
+    <div className="place-map-wrap">
+      <div
+        ref={mapRef}
+        className={`place-map${isMobile ? " tappable" : ""}`}
+        onClick={isMobile ? () => window.open(kakaoMapUrl, "_blank") : undefined}
+      />
+      <a className="place-map-link" href={kakaoMapUrl} target="_blank" rel="noreferrer">
+        카카오맵에서 크게 보기 ›
+      </a>
     </div>
   );
 }
@@ -85,7 +121,13 @@ function PlaceDetail() {
 
   const handleDirections = () => {
     if (!placeData) return;
-    const { name, lat, lng } = placeData;
+    const { name, address, latitude: lat, longitude: lng } = placeData;
+
+    // 좌표 없으면 카카오맵 검색으로
+    if (lat == null || lng == null) {
+      window.open(`https://map.kakao.com/link/search/${encodeURIComponent(`${name} ${address || ""}`.trim())}`, "_blank");
+      return;
+    }
 
     const openMap = (myLat, myLng) => {
       const url = `https://map.kakao.com/link/from/현재위치,${myLat},${myLng}/to/${encodeURIComponent(name)},${lat},${lng}`;
@@ -121,6 +163,9 @@ function PlaceDetail() {
               </button>
             </div>
             <p className="addr">주소 : {placeData.address}</p>
+            {placeData.latitude != null && placeData.longitude != null && (
+              <PlaceMap name={placeData.name} lat={placeData.latitude} lng={placeData.longitude} />
+            )}
             <div className="desc" style={{ maxHeight: '300px', overflowY: 'auto', paddingRight: '6px' }}>
               {parseDescription(placeData.description).map((block, i) => (
                 <div key={i} style={{ marginBottom: '12px', borderBottom: '1px solid #f0f0f0', paddingBottom: '10px' }}>

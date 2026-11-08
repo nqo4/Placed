@@ -218,3 +218,72 @@
     transform: translateY(0);
   }
 }
+
+/* 모바일 */
+@media (max-width: 768px) {
+  .guest-header {
+    padding: 12px 16px;
+  }
+
+  .logo-img {
+    width: 32px;
+  }
+
+  .logo-text {
+    font-size: 1.15rem;
+  }
+
+  .nav-btn {
+    margin-left: 10px;
+    font-size: 0.9rem;
+  }
+
+  .nav-btn.signup {
+    padding: 6px 12px;
+  }
+
+  .hero {
+    height: auto;
+    min-height: 60vh;
+    padding: 60px 16px;
+  }
+
+  .hero-content h1 {
+    font-size: 1.7rem;
+  }
+
+  .hero-content p {
+    font-size: 0.95rem;
+  }
+
+  .guest-page .features,
+  .guest-page .recommend {
+    padding: 50px 16px;
+  }
+
+  .guest-page .features h2,
+  .guest-page .recommend h2 {
+    font-size: 1.4rem;
+    margin-bottom: 24px;
+  }
+
+  .feature-list {
+    gap: 16px;
+  }
+
+  .feature-card {
+    width: 100%;
+    max-width: 360px;
+    box-sizing: border-box;
+  }
+
+  .guest-page .card-list {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .guest-page .card:hover,
+  .feature-card:hover {
+    transform: none;
+  }
+}

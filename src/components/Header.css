@@ -53,3 +53,28 @@
   padding: 8px 20px !important;
   border-radius: 10px !important;
 }
+/* 모바일 */
+@media (max-width: 768px) {
+  .common-header {
+    padding: 12px 16px;
+  }
+
+  .header-logo-img {
+    width: 26px;
+    height: 26px;
+    margin-right: 6px;
+  }
+
+  .logo-text {
+    font-size: 1.2rem;
+  }
+
+  .header-nav {
+    gap: 14px;
+  }
+
+  .header-nav button {
+    font-size: 0.9rem;
+    padding: 0;
+  }
+}

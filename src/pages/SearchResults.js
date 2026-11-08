@@ -22,7 +22,6 @@ function SearchResults() {
 
     searchKeyword(keyword)
       .then((res) => {
-        // 광고 장소(광고율 70% 이상)는 백엔드에서 이미 제외하고 내려줍니다.
         setResults(Array.isArray(res.data) ? res.data : res.data.results ?? []);
       })
       .catch(() => {
