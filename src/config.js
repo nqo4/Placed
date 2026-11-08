@@ -1,5 +1,5 @@
-// 백엔드 서버 주소 (배포 시 변경)
-export const BASE_URL = "http://localhost:8000";
+// 백엔드 서버 주소 (배포 시 REACT_APP_API_URL 환경변수로 지정)
+export const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
 
 
@@ -23,4 +23,7 @@ export const API_ROUTES = {
 
   SEARCH: "/api/search",
   SEARCH_ELASTIC: "/api/search/elastic/",
+  RECOMMEND_DAILY: "/api/search/recommend/daily/",
+
+  ANALYZE: "/api/analyze/",
 };

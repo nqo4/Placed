@@ -67,7 +67,7 @@ function SearchResults() {
                 <div key={item.id} className="result-card" onClick={() => navigate(`/place/${item.id}`)}>
                   <div className="card-img-box">
                     <img
-                      src={item.image || item.images?.[0] || item.image_url || "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?q=80&w=500"}
+                      src={item.image || item.images?.[0]?.url || item.images?.[0] || item.image_url || "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?q=80&w=500"}
                       alt={item.name}
                       className="result-img"
                     />
