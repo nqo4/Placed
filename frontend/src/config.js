@@ -1,4 +1,4 @@
-// 백엔드 서버 주소 — 배포 시에는 빌드 환경변수 REACT_APP_API_URL로 지정
+// 백엔드 서버 주소 (배포 시 REACT_APP_API_URL 환경변수로 지정)
 export const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
 

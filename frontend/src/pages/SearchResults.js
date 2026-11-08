@@ -22,7 +22,7 @@ function SearchResults() {
 
     searchKeyword(keyword)
       .then((res) => {
-        setResults(res.data);
+        setResults(Array.isArray(res.data) ? res.data : res.data.results ?? []);
       })
       .catch(() => {
         setError("검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
@@ -59,7 +59,9 @@ function SearchResults() {
           </div>
         ) : results.length > 0 ? (
           <div className="results-list-wrapper">
-            <p className="ai-notice-text">"{keyword}"에 대한 <strong>AI 분석 완료</strong> 리스트입니다.</p>
+            <p className="ai-notice-text">
+              "{keyword}"에 대한 <strong>AI 분석 완료</strong> 리스트입니다.
+            </p>
             <div className="results-grid">
               {results.map((item) => (
                 <div key={item.id} className="result-card" onClick={() => navigate(`/place/${item.id}`)}>
@@ -76,6 +78,14 @@ function SearchResults() {
                       <span className="ai-status-badge">AI 분석 완료</span>
                     </div>
                     <p className="card-address">주소 : {item.address}</p>
+                    {item.review_total > 0 && (
+                      <p className="card-review-count">
+                        후기 {item.review_total}개 분석
+                        {item.ad_excluded > 0 && (
+                          <> · <span className="ad-excluded">광고 의심 {item.ad_excluded}개 제외</span></>
+                        )}
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}

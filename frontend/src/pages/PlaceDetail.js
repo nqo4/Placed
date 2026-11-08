@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
@@ -8,10 +8,10 @@ import "../pages_CSS/PlaceDetail.css";
 function ImageSlider({ images }) {
   const [current, setCurrent] = useState(0);
 
-  // PlaceImage 데이터가 없는 장소에서 images가 빈 배열로 올 경우 슬라이더 크래시 방지 — 틀은 유지하고 '이미지 준비 중' 표시
+  // 이미지 없으면 '이미지 준비 중' 표시
   if (!images || images.length === 0) {
     return (
-      <div style={{ position: "relative", width: "100%", height: "300px", borderRadius: "12px", overflow: "hidden", background: "#eee", display: "flex", alignItems: "center", justifyContent: "center", color: "#aaa", fontSize: "1rem" }}>
+      <div className="image-slider" style={{ position: "relative", width: "100%", borderRadius: "12px", overflow: "hidden", background: "#eee", display: "flex", alignItems: "center", justifyContent: "center", color: "#aaa", fontSize: "1rem" }}>
         이미지 준비 중
       </div>
     );
@@ -21,9 +21,9 @@ function ImageSlider({ images }) {
   const next = () => setCurrent((current + 1) % images.length);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "300px", borderRadius: "12px", overflow: "hidden", background: "#eee" }}>
+    <div className="image-slider" style={{ position: "relative", width: "100%", borderRadius: "12px", overflow: "hidden", background: "#eee" }}>
       <img
-        src={images[current]?.url || images[current]}
+        src={typeof images[current] === "string" ? images[current] : images[current]?.url}
         alt={`슬라이드 ${current + 1}`}
         style={{ width: "100%", height: "100%", objectFit: "contain", background: "#f0f0f0" }}
       />
@@ -53,12 +53,50 @@ function ImageSlider({ images }) {
   );
 }
 
+function PlaceMap({ name, lat, lng }) {
+  const mapRef = useRef(null);
+  const isMobile = window.matchMedia("(max-width: 768px)").matches;
+
+  useEffect(() => {
+    if (!window.kakao?.maps || !mapRef.current) return;
+    const { kakao } = window;
+    const position = new kakao.maps.LatLng(lat, lng);
+    const map = new kakao.maps.Map(mapRef.current, { center: position, level: 3 });
+    new kakao.maps.Marker({ map, position });
+
+    // 폰은 스크롤 방해 안 되게 고정, PC는 드래그/확대 가능
+    if (isMobile) {
+      map.setDraggable(false);
+      map.setZoomable(false);
+    } else {
+      map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
+    }
+  }, [lat, lng, isMobile]);
+
+  const kakaoMapUrl = `https://map.kakao.com/link/map/${encodeURIComponent(name)},${lat},${lng}`;
+
+  return (
+    <div className="place-map-wrap">
+      <div
+        ref={mapRef}
+        className={`place-map${isMobile ? " tappable" : ""}`}
+        onClick={isMobile ? () => window.open(kakaoMapUrl, "_blank") : undefined}
+      />
+      <a className="place-map-link" href={kakaoMapUrl} target="_blank" rel="noreferrer">
+        카카오맵에서 크게 보기 ›
+      </a>
+    </div>
+  );
+}
+
 function PlaceDetail() {
   const { id } = useParams();
   const [placeData, setPlaceData] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showDescModal, setShowDescModal] = useState(false);
+  const [expandedReview, setExpandedReview] = useState(null);
+  const [showAllReviews, setShowAllReviews] = useState(false);
 
   const parseDescription = (text) => {
     if (!text) return [];
@@ -83,7 +121,13 @@ function PlaceDetail() {
 
   const handleDirections = () => {
     if (!placeData) return;
-    const { name, lat, lng } = placeData;
+    const { name, address, latitude: lat, longitude: lng } = placeData;
+
+    // 좌표 없으면 카카오맵 검색으로
+    if (lat == null || lng == null) {
+      window.open(`https://map.kakao.com/link/search/${encodeURIComponent(`${name} ${address || ""}`.trim())}`, "_blank");
+      return;
+    }
 
     const openMap = (myLat, myLng) => {
       const url = `https://map.kakao.com/link/from/현재위치,${myLat},${myLng}/to/${encodeURIComponent(name)},${lat},${lng}`;
@@ -102,21 +146,8 @@ function PlaceDetail() {
     }
   };
 
-  const avgRating = reviews.length
-    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
-    : 0;
-
   if (loading) return <div className="loading-box">데이터 분석 중...</div>;
 
-  const reliability = placeData.non_ad_probability ?? "85 (더미)";
-  const reviewCount = reviews.length;
-  const analysis = placeData.ai_filtering_reason
-    ? [{ id: 1, type: 'positive', text: placeData.ai_filtering_reason }]
-    : [
-        { id: 1, type: 'positive', text: '실제 방문자들의 긍정적인 반응이 많습니다. (더미)' },
-        { id: 2, type: 'positive', text: '광고성 키워드 비중이 낮아 신뢰할 수 있습니다. (더미)' },
-        { id: 3, type: 'warning', text: '최근 리뷰 중 일부 서비스 불만이 감지되었습니다. (더미)' },
-      ];
 
   return (
     <div className="place-detail-page">
@@ -132,6 +163,9 @@ function PlaceDetail() {
               </button>
             </div>
             <p className="addr">주소 : {placeData.address}</p>
+            {placeData.latitude != null && placeData.longitude != null && (
+              <PlaceMap name={placeData.name} lat={placeData.latitude} lng={placeData.longitude} />
+            )}
             <div className="desc" style={{ maxHeight: '300px', overflowY: 'auto', paddingRight: '6px' }}>
               {parseDescription(placeData.description).map((block, i) => (
                 <div key={i} style={{ marginBottom: '12px', borderBottom: '1px solid #f0f0f0', paddingBottom: '10px' }}>
@@ -140,35 +174,49 @@ function PlaceDetail() {
                 </div>
               ))}
             </div>
-
-            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '6px', marginTop: '16px', flexWrap: 'nowrap' }}>
-              {Array.from({ length: 5 }, (_, i) => (
-                <span key={i} style={{ color: i < Math.round(avgRating) ? '#ffc107' : '#ddd', fontSize: '1.1rem', lineHeight: 1 }}>★</span>
-              ))}
-              <span style={{ fontWeight: 700, color: '#2a7fff', fontSize: '1.1rem' }}>{avgRating}</span>
-              <span style={{ color: '#aaa', fontSize: '0.9rem' }}>({reviews.length}명) (더미)</span>
-            </div>
           </div>
         </section>
 
         <section className="report-card">
           <div className="report-header">
-            <h3>🤖 AI 광고 분석 리포트</h3>
+            <h3>💬 리뷰</h3>
+            <span style={{ fontSize: "0.9rem", color: "#aaa" }}>{reviews.length}개</span>
           </div>
-          <div className="score-box">
-            <span className="score">{reliability}%</span>
-            <p className="score-label">실사용자 리뷰 신뢰도</p>
-            <p className="score-sub">리뷰 {reviewCount}개를 분석한 결과입니다.</p>
-          </div>
-          <div className="analysis-list">
-            {analysis.map((item) => (
-              <div key={item.id} className={`analysis-item ${item.type}`}>
-                <span className="icon">{item.type === "warning" ? "!" : "✓"}</span>
-                <p>{item.text}</p>
+          {reviews.length === 0 ? (
+            <p style={{ color: "#aaa", fontSize: "0.9rem", padding: "16px 0" }}>등록된 리뷰가 없습니다.</p>
+          ) : (
+            <>
+              <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "12px" }}>
+                {(showAllReviews ? reviews : reviews.slice(0, 3)).map((r) => (
+                  <div key={r.id}
+                    onClick={() => setExpandedReview(expandedReview === r.id ? null : r.id)}
+                    style={{ borderBottom: "1px solid #f0f0f0", paddingBottom: "12px", cursor: "pointer" }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                      <span style={{ color: "#aaa", fontSize: "0.8rem" }}>{r.created_at?.slice(0, 10)}</span>
+                    </div>
+                    <p style={{
+                      fontSize: "0.9rem", color: "#333", lineHeight: "1.6", margin: 0,
+                      display: "-webkit-box", WebkitLineClamp: expandedReview === r.id ? "unset" : 2,
+                      WebkitBoxOrient: "vertical", overflow: expandedReview === r.id ? "visible" : "hidden"
+                    }}>{r.content}</p>
+                    {expandedReview !== r.id && r.content?.length > 80 && (
+                      <span style={{ fontSize: "0.8rem", color: "#2a7fff", marginTop: "4px", display: "block" }}>더 보기</span>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <button className="view-reviews-btn">전체 리뷰 보기</button>
+              {reviews.length > 3 && (
+                <button onClick={() => setShowAllReviews(!showAllReviews)} style={{
+                  marginTop: "14px", width: "100%", padding: "10px",
+                  border: "1px solid #ddd", borderRadius: "8px", background: "white",
+                  color: "#555", fontSize: "0.9rem", cursor: "pointer"
+                }}>
+                  {showAllReviews ? "접기" : `전체 리뷰 ${reviews.length}개 보기`}
+                </button>
+              )}
+            </>
+          )}
         </section>
       </main>
 

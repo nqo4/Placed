@@ -8,11 +8,6 @@
   flex-direction: column; /* 헤더와 본문을 위아래로 배치 */
 }
 
-/* 
-  [삭제] .results-header, .results-header h1, .nav-menu 관련 스타일 
-  이유: 공통 Header.css에서 관리하므로 스타일 충돌 방지를 위해 제거합니다.
-*/
-
 /* 검색 결과 상단 타이틀 섹션 */
 .search-title-section {
   text-align: center;
@@ -123,6 +118,17 @@
   margin: 5px 0 10px 0;
 }
 
+.card-review-count {
+  font-size: 0.85rem;
+  color: #888;
+  margin: -4px 0 10px 0;
+}
+
+.card-review-count .ad-excluded {
+  color: #dc3545;
+  font-weight: 600;
+}
+
 .card-trust-value {
   color: #2a7fff;
   font-weight: 800;
@@ -151,7 +157,7 @@
 }
 
 .back-btn {
-  background-color: #5c1c3d; /* 기존 유지: 자주색 계열 */
+  background-color: #5c1c3d;
   color: #fff;
   padding: 14px 24px;
   border: none;
@@ -179,4 +185,79 @@
 
 .footer a:hover {
   text-decoration: underline;
+}
+/* 모바일 */
+@media (max-width: 768px) {
+  .search-title-section {
+    padding: 40px 16px 24px;
+  }
+
+  .search-title-section h2 {
+    font-size: 1.6rem;
+  }
+
+  .keyword-info,
+  .ai-notice-text {
+    font-size: 0.95rem;
+  }
+
+  .ai-notice-text {
+    margin-bottom: 24px;
+  }
+
+  .results-list-wrapper {
+    padding: 0 16px;
+  }
+
+  .results-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .result-card {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .result-card:hover {
+    transform: none;
+  }
+
+  .card-img-box {
+    width: 90px;
+    height: 90px;
+    border-radius: 12px;
+    margin-right: 14px;
+  }
+
+  .card-title-line {
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+
+  .card-title-line h3 {
+    font-size: 1.05rem;
+  }
+
+  .card-address {
+    font-size: 0.85rem;
+    margin: 4px 0 6px 0;
+  }
+
+  .card-review-count {
+    font-size: 0.8rem;
+    margin: 0;
+  }
+
+  .empty-box {
+    width: 100%;
+    max-width: 420px;
+    padding: 40px 20px;
+    box-sizing: border-box;
+  }
+
+  .no-result-wrapper {
+    padding: 20px 16px 0;
+  }
 }

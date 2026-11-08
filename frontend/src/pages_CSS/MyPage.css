@@ -7,16 +7,11 @@
   font-family: 'Noto Sans KR', sans-serif;
 }
 
-/* 
-  [수정] .mypage-header 및 .placed-logo 삭제 
-  이유: Header.js 컴포넌트가 해당 역할을 대신하며 스타일 충돌을 방지하기 위함
-*/
-
 /* 레이아웃 설정: 헤더 아래 본문 정렬 */
 .mypage-layout {
   display: flex;
   max-width: 1100px;
-  margin: 40px auto; /* [수정] 상단 여백을 주어 공통 헤더와 본문 사이 간격 확보 */
+  margin: 40px auto;
   gap: 30px;
   padding: 0 20px;
 }
