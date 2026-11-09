@@ -6,6 +6,7 @@ AI 광고 판별·필터링 결과(TER-003, SFR-004/008), 그리고 네이버 �
 
 실행: python manage.py test api
 """
+import io
 import json
 import os
 import shutil
@@ -1797,6 +1798,59 @@ class FrontendCompatibilityTests(APITestCase):
         PlaceAnalysis.objects.create(name='호환카페', content_text='광고', is_ad=True, ad_probability=95)
         res = self.client.get(reverse('elastic-search'), {'search': '호환카페'})
         self.assertEqual([p['id'] for p in res.data], [self.place.id])
+
+    def test_recent_places_lists_latest_view_first_without_duplicates(self):
+        second = Place.objects.create(name='두번째카페', address='대전 유성구')
+        other = User.objects.create_user(username='other02', password='StrongPass123')
+        url = reverse('recent-places')
+        self.assertEqual(self.client.get(url).status_code, status.HTTP_401_UNAUTHORIZED)
+
+        self.client.force_authenticate(user=other)
+        self.client.get(reverse('place-detail', args=[second.id]))
+        self.client.force_authenticate(user=self.user)
+        for place in (self.place, second, self.place):
+            self.client.get(reverse('place-detail', args=[place.id]))
+
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual([p['id'] for p in res.data], [self.place.id, second.id])
+        self.assertIn('viewed_at', res.data[0])
+        self.assertEqual([p['id'] for p in self.client.get(url, {'limit': 1}).data], [self.place.id])
+
+    def test_user_can_delete_only_own_review(self):
+        other = User.objects.create_user(username='other03', password='StrongPass123')
+        mine = Review.objects.create(place=self.place, user=self.user, content='내 리뷰', rating=4)
+        theirs = Review.objects.create(place=self.place, user=other, content='남의 리뷰', rating=5)
+
+        self.assertEqual(self.client.delete(reverse('review-delete', args=[mine.id])).status_code,
+                         status.HTTP_401_UNAUTHORIZED)
+        self.client.force_authenticate(user=self.user)
+        self.assertEqual(self.client.delete(reverse('review-delete', args=[theirs.id])).status_code,
+                         status.HTTP_404_NOT_FOUND)
+        self.assertEqual(self.client.delete(reverse('review-delete', args=[mine.id])).status_code,
+                         status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Review.objects.filter(id=mine.id).exists())
+        self.assertTrue(Review.objects.filter(id=theirs.id).exists())
+
+    @override_settings(NAVER_CLIENT_ID='dummy-id', NAVER_CLIENT_SECRET='dummy-secret')
+    @patch('api.management.commands.fill_coordinates.time.sleep', return_value=None)
+    @patch('api.naver_miner.requests.get')
+    def test_fill_coordinates_saves_matching_item_only(self, mock_get, _sleep):
+        self.place.address = '대전광역시 유성구 봉명로 1'
+        self.place.save()
+        unmatched = Place.objects.create(name='없는카페', address='대전광역시 유성구 봉명로 2')
+        items = [{'title': '<b>호환카페</b>', 'roadAddress': '대전광역시 유성구 봉명로 1',
+                  'mapx': '1273444321', 'mapy': '363578220'}]
+        mock_get.side_effect = lambda url, headers=None, timeout=None: _fake_response(
+            200, {'items': items if '%ED%98%B8%ED%99%98' in url else []})
+
+        call_command('fill_coordinates', stdout=io.StringIO())
+
+        self.place.refresh_from_db()
+        unmatched.refresh_from_db()
+        self.assertAlmostEqual(self.place.latitude, 36.357822)
+        self.assertAlmostEqual(self.place.longitude, 127.3444321)
+        self.assertIsNone(unmatched.latitude)
 
     def test_place_reviews_include_non_ad_sources_without_duplicates(self):
         crawler = User.objects.create_user(username='crawler01', password='StrongPass123')

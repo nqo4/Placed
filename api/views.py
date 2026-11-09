@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model, authenticate
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from django.db.models import Count, Q
+from django.db.models import Count, Max, Q
 
 from .models import PlaceAnalysis, Place, PlaceImage, Review, ReviewSource, Inquiry, SearchLog, PlaceViewLog
 from .serializers import (
@@ -273,6 +273,48 @@ class MyReviewsView(generics.ListAPIView):
 
     def get_queryset(self):
         return Review.objects.filter(user=self.request.user)
+
+
+class ReviewDeleteView(generics.DestroyAPIView):
+    """본인이 쓴 리뷰만 삭제합니다. 다른 사람의 리뷰는 존재 여부도 드러나지 않도록 404로 처리합니다."""
+    serializer_class = ReviewSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Review.objects.filter(user=self.request.user)
+
+
+RECENT_PLACES_DEFAULT_LIMIT = 20
+RECENT_PLACES_MAX_LIMIT = 50
+
+
+class RecentPlacesView(APIView):
+    """
+    로그인한 사용자가 최근에 상세 페이지를 연 장소 목록(PlaceViewLog 기준). 같은 장소를 여러 번
+    봤으면 가장 최근 한 번만 남기고, 최근 본 순서로 정렬합니다. ?limit=로 개수를 정할 수 있습니다.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        try:
+            limit = int(request.query_params.get('limit', RECENT_PLACES_DEFAULT_LIMIT))
+        except ValueError:
+            limit = RECENT_PLACES_DEFAULT_LIMIT
+        limit = max(1, min(limit, RECENT_PLACES_MAX_LIMIT))
+
+        recent = list(
+            PlaceViewLog.objects.filter(user=request.user)
+            .values('place_id')
+            .annotate(viewed_at=Max('created_at'))
+            .order_by('-viewed_at')[:limit]
+        )
+        places = Place.objects.in_bulk([row['place_id'] for row in recent])
+        results = [
+            {**PlaceSerializer(places[row['place_id']], context={'request': request}).data,
+             'viewed_at': row['viewed_at']}
+            for row in recent if row['place_id'] in places
+        ]
+        return Response(results, status=status.HTTP_200_OK)
 
 # --- Search View ---
 
