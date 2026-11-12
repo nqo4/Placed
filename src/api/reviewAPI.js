@@ -7,13 +7,12 @@ export const getPlaceDetail = (id) =>
 export const getReviewsByPlace = (id) =>
   API.get(`${API_ROUTES.REVIEWS_BY_PLACE}${id}/`);
 
-export const createReview = (placeId, content, rating) =>
-  API.post(API_ROUTES.CREATE_REVIEW, { place_id: placeId, content, rating });
+export const createReview = (placeId, content) =>
+  API.post(API_ROUTES.CREATE_REVIEW, { place: placeId, place_id: placeId, content });
 
 export const getMyReviews = () =>
   API.get(API_ROUTES.MY_REVIEWS);
 
-// MyReviews.js에서 아직 더미 사용 중, 백엔드 연결되면 import 주석 해제
 export const updateReview = (id, content, rating) =>
   API.patch(`/api/reviews/${id}/`, { content, rating });
 

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import { getPlaceDetail, getReviewsByPlace } from "../api/reviewAPI";
+import { getPlaceDetail, getReviewsByPlace, createReview } from "../api/reviewAPI";
 import "../pages_CSS/PlaceDetail.css";
 
 function ImageSlider({ images }) {
@@ -89,8 +89,14 @@ function PlaceMap({ name, lat, lng }) {
   );
 }
 
+const SOURCE_LABEL = { blog: "블로그", cafearticle: "카페" };
+
 function PlaceDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const isLoggedIn = !!localStorage.getItem("token");
+  const [reviewText, setReviewText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [placeData, setPlaceData] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -118,6 +124,23 @@ function PlaceDetail() {
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
   }, [id]);
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    const content = reviewText.trim();
+    if (!content || submitting) return;
+    setSubmitting(true);
+    try {
+      await createReview(id, content);
+      setReviewText("");
+      const res = await getReviewsByPlace(id);
+      setReviews(res.data);
+    } catch {
+      alert("후기 등록에 실패했습니다. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleDirections = () => {
     if (!placeData) return;
@@ -182,6 +205,23 @@ function PlaceDetail() {
             <h3>💬 리뷰</h3>
             <span style={{ fontSize: "0.9rem", color: "#aaa" }}>{reviews.length}개</span>
           </div>
+          {isLoggedIn ? (
+            <form className="review-form" onSubmit={handleReviewSubmit}>
+              <textarea
+                placeholder="이곳에 다녀온 후기를 남겨주세요."
+                value={reviewText}
+                onChange={(e) => setReviewText(e.target.value)}
+                maxLength={1000}
+              />
+              <button type="submit" disabled={!reviewText.trim() || submitting}>
+                {submitting ? "등록 중..." : "등록"}
+              </button>
+            </form>
+          ) : (
+            <button className="review-login" onClick={() => navigate("/login")}>
+              로그인하고 후기 남기기 ›
+            </button>
+          )}
           {reviews.length === 0 ? (
             <p style={{ color: "#aaa", fontSize: "0.9rem", padding: "16px 0" }}>등록된 리뷰가 없습니다.</p>
           ) : (
@@ -192,8 +232,22 @@ function PlaceDetail() {
                     onClick={() => setExpandedReview(expandedReview === r.id ? null : r.id)}
                     style={{ borderBottom: "1px solid #f0f0f0", paddingBottom: "12px", cursor: "pointer" }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
-                      <span style={{ color: "#aaa", fontSize: "0.8rem" }}>{r.created_at?.slice(0, 10)}</span>
+                    <div className="review-meta">
+                      <span className={`review-badge ${r.is_external ? "external" : "visitor"}`}>
+                        {r.is_external ? SOURCE_LABEL[r.source_type] || "외부 후기" : "방문자"}
+                      </span>
+                      <span className="review-date">{r.created_at?.slice(0, 10)}</span>
+                      {r.is_external && r.url && (
+                        <a
+                          className="review-source-link"
+                          href={r.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          원문 보기 ›
+                        </a>
+                      )}
                     </div>
                     <p style={{
                       fontSize: "0.9rem", color: "#333", lineHeight: "1.6", margin: 0,

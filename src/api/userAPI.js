@@ -11,8 +11,8 @@ const publicAPI = axios.create({
 export const loginUser = (id, password) =>
   publicAPI.post(API_ROUTES.LOGIN, { id, password });
 
-export const signupUser = (id, password) =>
-  publicAPI.post(API_ROUTES.SIGNUP, { username: id, password });
+export const signupUser = (id, password, name = "") =>
+  publicAPI.post(API_ROUTES.SIGNUP, { username: id, password, first_name: name });
 
 export const checkDuplicateId = (id) =>
   publicAPI.get(`${API_ROUTES.CHECK_ID}?id=${id}`);

@@ -10,8 +10,8 @@ function MyPage() {
 
   const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
   const [userInfo, setUserInfo] = useState({
-    name: savedUser.username || "사용자 (더미)",
-    email: savedUser.email || "user@example.com (더미)",
+    name: savedUser.first_name || "",
+    email: savedUser.username || "",
     newPassword: "",
     confirmPassword: "",
   });
@@ -60,7 +60,7 @@ function MyPage() {
               <span className="avatar-icon">👤</span>
             </div>
             <div className="profile-text">
-              <p className="profile-name">{userInfo.name}</p>
+              <p className="profile-name">{userInfo.name || userInfo.email}</p>
             </div>
           </div>
 
