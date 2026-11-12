@@ -8,6 +8,17 @@ import "../pages_CSS/SearchResults.css";
 const PAGE_SIZE = 10;
 
 const BLOCK_SIZE = 5;
+const FALLBACK_IMG = "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?q=80&w=500";
+
+const imageOf = (item) => item.image || item.images?.[0]?.url || item.images?.[0] || item.image_url || FALLBACK_IMG;
+
+const loadViewMode = () => {
+  try {
+    return localStorage.getItem("searchView") === "table" ? "table" : "card";
+  } catch {
+    return "card";
+  }
+};
 
 function SearchResults() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -18,6 +29,14 @@ function SearchResults() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [query, setQuery] = useState(keyword);
+  const [viewMode, setViewMode] = useState(loadViewMode);
+
+  const changeView = (mode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem("searchView", mode);
+    } catch {}
+  };
 
   useEffect(() => {
     setQuery(keyword);
@@ -98,14 +117,66 @@ function SearchResults() {
         ) : results.length > 0 ? (
           <div className="results-list-wrapper">
             <p className="ai-notice-text">
-              "{keyword}"에 대한 <strong>AI 분석 완료</strong> 리스트입니다. (총 {results.length}곳)
+              "{keyword}"에 대한 <strong>AI 분석 완료</strong> 리스트입니다.
             </p>
+            <div className="results-toolbar">
+              <span className="results-total">총 <strong>{results.length}</strong>곳</span>
+              <div className="view-toggle">
+                <button
+                  className={viewMode === "card" ? "active" : ""}
+                  onClick={() => changeView("card")}
+                  title="사진으로 보기"
+                  aria-label="사진으로 보기"
+                >
+                  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+                    <rect x="1" y="1" width="6" height="6" rx="1.5" />
+                    <rect x="9" y="1" width="6" height="6" rx="1.5" />
+                    <rect x="1" y="9" width="6" height="6" rx="1.5" />
+                    <rect x="9" y="9" width="6" height="6" rx="1.5" />
+                  </svg>
+                </button>
+                <button
+                  className={viewMode === "table" ? "active" : ""}
+                  onClick={() => changeView("table")}
+                  title="목록으로 보기"
+                  aria-label="목록으로 보기"
+                >
+                  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+                    <rect x="1" y="2" width="14" height="2.5" rx="1.25" />
+                    <rect x="1" y="6.75" width="14" height="2.5" rx="1.25" />
+                    <rect x="1" y="11.5" width="14" height="2.5" rx="1.25" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            {viewMode === "table" ? (
+              <ul className="results-list">
+                {pageResults.map((item) => (
+                  <li key={item.id} className="list-row" onClick={() => navigate(`/place/${item.id}`)}>
+                    <img
+                      className="list-thumb"
+                      src={imageOf(item)}
+                      alt={item.name}
+                      onError={(e) => { e.currentTarget.src = FALLBACK_IMG; }}
+                    />
+                    <div className="list-main">
+                      <h3>{item.name}</h3>
+                      <p>{item.address}</p>
+                    </div>
+                    <div className="list-meta">
+                      <span className="meta-review">후기 {item.review_total ?? 0}</span>
+                      {item.ad_excluded > 0 && <span className="meta-ad">광고 {item.ad_excluded} 제외</span>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
             <div className="results-grid">
               {pageResults.map((item) => (
                 <div key={item.id} className="result-card" onClick={() => navigate(`/place/${item.id}`)}>
                   <div className="card-img-box">
                     <img
-                      src={item.image || item.images?.[0]?.url || item.images?.[0] || item.image_url || "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?q=80&w=500"}
+                      src={imageOf(item)}
                       alt={item.name}
                       className="result-img"
                     />
@@ -128,6 +199,7 @@ function SearchResults() {
                 </div>
               ))}
             </div>
+            )}
             {totalPages > 1 && (
               <nav className="pagination">
                 <button disabled={blockStart === 1} onClick={() => goToPage(blockStart - BLOCK_SIZE)}>‹</button>
