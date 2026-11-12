@@ -5,6 +5,8 @@ from django.contrib.auth import get_user_model, authenticate
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from collections import Counter
+
 from django.db.models import Count, Max, Q
 
 from .models import PlaceAnalysis, Place, PlaceImage, Review, ReviewSource, Inquiry, SearchLog, PlaceViewLog
@@ -20,7 +22,7 @@ from .image_utils import compress_image
 from .recommendation import (
     recommend_places_for_user, daily_recommended_places, find_matching_places, similar_places_for
 )
-from .keyword_taxonomy import PLACE_TYPE_LABELS
+from .keyword_taxonomy import PLACE_TYPE_LABELS, REVIEW_TOPIC_KEYWORDS
 from django.conf import settings
 
 User = get_user_model()
@@ -186,7 +188,30 @@ class PlaceDetailView(generics.RetrieveAPIView):
         analysis = PlaceAnalysis.objects.filter(name=response.data['name']).first()
         response.data['non_ad_probability'] = 100 - analysis.ad_probability if analysis else None
         response.data['ai_filtering_reason'] = analysis.ai_summary if analysis else None
+        response.data['review_keywords'] = _review_keyword_counts(self.kwargs['pk'])
         return response
+
+
+def _counted_review_sources(place_id):
+    """광고가 아니라고 판정된 후기(분석 성공, 실제 후기, 장소 정보 있음)."""
+    return ReviewSource.objects.filter(
+        place_id=place_id, is_review=True, has_place_info=True, analysis_failed=False,
+        ad_probability__lt=getattr(settings, 'AD_EXCLUDE_THRESHOLD', 70),
+    )
+
+
+def _review_keyword_counts(place_id):
+    """
+    광고가 아닌 후기에서만 후기 키워드를 세어 많은 순으로 돌려줍니다.
+    예: [{"keyword": "맛있어요", "count": 8, "sentiment": "positive"}, ...]
+    """
+    counts = Counter()
+    for keywords in _counted_review_sources(place_id).values_list('topic_keywords', flat=True):
+        counts.update({item['keyword'] for item in keywords or [] if item.get('keyword') in REVIEW_TOPIC_KEYWORDS})
+    return [
+        {'keyword': keyword, 'count': count, 'sentiment': REVIEW_TOPIC_KEYWORDS[keyword]}
+        for keyword, count in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    ]
 
 
 # [추가] 장소 상세 - "이런 곳은 어때요" 비슷하거나 가까운 매장 추천. PlaceDetailView에서
@@ -228,12 +253,9 @@ class PlaceReviewsView(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         place_id = self.kwargs['place_id']
-        ad_threshold = getattr(settings, 'AD_EXCLUDE_THRESHOLD', 70)
         sources = list(
-            ReviewSource.objects.filter(
-                place_id=place_id, is_review=True, has_place_info=True,
-                analysis_failed=False, ad_probability__lt=ad_threshold,
-            ).select_related('place').order_by('ad_probability', 'id')[:PLACE_REVIEW_SOURCE_LIMIT]
+            _counted_review_sources(place_id).select_related('place')
+            .order_by('ad_probability', 'id')[:PLACE_REVIEW_SOURCE_LIMIT]
         )
         crawled_contents = set(
             ReviewSource.objects.filter(place_id=place_id).values_list('content_text', flat=True)
@@ -253,6 +275,7 @@ class PlaceReviewsView(generics.ListAPIView):
             'title': s.title,
             'url': s.url,
             'source_type': s.source_type,
+            'keywords': [item['keyword'] for item in s.topic_keywords or []],
             'is_external': True,
         } for s in sources]
         return Response(results, status=status.HTTP_200_OK)

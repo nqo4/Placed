@@ -107,6 +107,10 @@ class ReviewSource(models.Model):
     # [추가] AI 호출 실패로 기본값(50%)이 저장된 글. 재사용하지 않고 다음 수집 때 다시 분석하며,
     # 다른 글에 정상 판정이 있으면 광고 확률 평균/대표 리뷰에서도 제외합니다.
     analysis_failed = models.BooleanField(default=False, help_text="AI 분석 실패로 기본값이 저장된 글인지")
+    # [추가] 글쓴이가 평가한 후기 키워드와 근거 [{"keyword": ..., "evidence": ...}]
+    # (api/keyword_taxonomy.py의 REVIEW_TOPIC_KEYWORDS). null은 아직 키워드를 뽑지 않은 글이라
+    # 다음 수집 때 다시 분석하고, 빈 배열은 분석했지만 해당 키워드가 없는 글입니다.
+    topic_keywords = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     # [추가] 자체 학습 데이터셋 구축(1단계) - AI가 예측한 is_ad/ad_probability와는 별개로,

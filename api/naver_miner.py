@@ -940,12 +940,12 @@ def _score_review_sources(place, candidates):
     각 후보 글을 AI로 분석해 ad_probability(광고일 확률)와 has_place_info(장소에 대한
     실질적인 정보가 있는지)를 매깁니다. 기존에 저장된 ReviewSource와 (출처 종류, URL, 본문)이
     완전히 같은 후보는 재분석하지 않고 이전 판정을 재사용합니다 - 내용이 바뀌지 않은 글까지
-    매번 Gemini에 다시 물어보는 비용을 줄입니다. 분석에 실패했던 글은 재사용하지 않고 다시
-    분석합니다.
+    매번 Gemini에 다시 물어보는 비용을 줄입니다. 분석에 실패했던 글과 후기 키워드를 아직 뽑지
+    않은 글(topic_keywords가 null)은 재사용하지 않고 다시 분석합니다.
     """
     existing_by_key = {
         (rs.source_type, rs.url or "", rs.content_text): rs
-        for rs in place.review_sources.filter(analysis_failed=False)
+        for rs in place.review_sources.filter(analysis_failed=False, topic_keywords__isnull=False)
     }
 
     scored = []
@@ -960,6 +960,7 @@ def _score_review_sources(place, candidates):
             has_place_info = existing.has_place_info
             is_review = existing.is_review
             exclude_reason = existing.exclude_reason
+            topic_keywords = existing.topic_keywords
             analysis_failed = False
             reason = None
             reused_count += 1
@@ -972,6 +973,7 @@ def _score_review_sources(place, candidates):
             has_place_info = ai_result.get("has_place_info", True)
             is_review = ai_result.get("is_review", True)
             exclude_reason = ai_result.get("exclude_reason")
+            topic_keywords = ai_result.get("topic_keywords") or []
             reason = ai_result.get("reason", "분석 완료")
 
         scored.append({
@@ -981,6 +983,7 @@ def _score_review_sources(place, candidates):
             "has_place_info": has_place_info,
             "is_review": is_review,
             "exclude_reason": exclude_reason,
+            "topic_keywords": topic_keywords,
             "analysis_failed": analysis_failed,
             "reason": reason,
         })
@@ -1075,6 +1078,7 @@ def _save_review_sources(place, sources):
             has_place_info=s.get("has_place_info", True),
             is_review=s.get("is_review", True),
             exclude_reason=s.get("exclude_reason"),
+            topic_keywords=s.get("topic_keywords"),
             analysis_failed=s.get("analysis_failed", False),
         )
         for s in sources

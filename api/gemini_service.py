@@ -3,6 +3,26 @@ import re
 import google.generativeai as genai
 from django.conf import settings
 
+from .keyword_taxonomy import REVIEW_TOPIC_KEYWORDS
+
+def _clean_topic_keywords(raw, text):
+    """
+    AI가 고른 후기 키워드 중 후보 목록에 있고, 근거(evidence)가 원문에 실제로 있는 것만 남깁니다.
+    공백 차이는 무시하며, 같은 키워드는 처음 나온 근거 하나만 남깁니다.
+    """
+    squash = lambda s: re.sub(r'\s+', '', s or '')
+    source = squash(text)
+    cleaned = {}
+    for item in raw if isinstance(raw, list) else []:
+        if not isinstance(item, dict):
+            continue
+        keyword, evidence = item.get('keyword'), item.get('evidence')
+        if keyword in REVIEW_TOPIC_KEYWORDS and isinstance(evidence, str) and evidence.strip() \
+                and squash(evidence) in source and keyword not in cleaned:
+            cleaned[keyword] = evidence.strip()
+    return [{'keyword': k, 'evidence': e} for k, e in cleaned.items()]
+
+
 def analyze_review(text, place_name=None):
     """
     settings.py(.env)에 정의된 GEMINI_API_KEY / GEMINI_MODEL_NAME을 사용하여 광고 여부 분석
@@ -65,6 +85,21 @@ def analyze_review(text, place_name=None):
         3. 그 외 리뷰가 아닌 상업적 공고/모집글: 분양, 임대, 체험단/서포터즈 모집, 이벤트 참여
            안내 등
         위 어디에도 해당하지 않고 실제 방문/이용 경험을 다루는 글이면 is_review는 true입니다.
+
+        [후기 키워드]
+        글쓴이가 "{place_name}"에 대해 말한 평가를 아래 후보 목록에서만 골라 topic_keywords에 넣으세요.
+        1. 글쓴이의 평가라면 짧은 표현도 근거가 됩니다. 제목에 쓴 글쓴이의 평가도 포함합니다.
+           예: "빵이 전체적으로 맛있더라구요", "늘 맛있게 먹고 나오는", "분위기 너무 좋았어요".
+        2. 남에게 들은 말("맛있다길래", "추천 받아서"), 소문·평판("~로 유명한", "~로 소문난")만 있으면 근거가 아닙니다.
+        3. 영업 안내·가게 정보("웨이팅 가능", "예약 가능", 주소, 영업시간)는 근거가 아닙니다.
+           단, 글쓴이가 실제로 기다렸거나 사람이 많았다고 쓰면 "웨이팅이 있어요"입니다.
+        4. 뜻을 정확히 따집니다. 아쉬움·부정 표현은 부정 키워드로 고릅니다.
+           예: "양이 가격 대비 적어 아쉽다" → 양이 적어요, "에그타르트는 평범했다" → 맛이 평범해요.
+        5. "맛집", "핫플" 같은 검색용 수식어 하나만으로는 고르지 않습니다.
+        6. 같은 키워드는 한 번만 고르고, 해당이 없으면 빈 배열입니다.
+        7. evidence에는 근거가 된 원문을 한 글자도 바꾸지 말고 그대로 인용합니다.
+        긍정 후보: {", ".join(k for k, v in REVIEW_TOPIC_KEYWORDS.items() if v == "positive")}
+        부정 후보: {", ".join(k for k, v in REVIEW_TOPIC_KEYWORDS.items() if v == "negative")}
         """
             place_relevance_field = (
                 '"has_place_info": true 또는 false '
@@ -73,7 +108,8 @@ def analyze_review(text, place_name=None):
                 '            "info_reason": "장소 정보가 있다/없다고 판단한 이유를 한 줄로 요약",\n'
                 '            "is_review": true 또는 false,\n'
                 '            "exclude_reason": is_review가 false일 때만 "job_posting" / "unrelated" / '
-                '"other_notice" 중 하나, is_review가 true면 null'
+                '"other_notice" 중 하나, is_review가 true면 null,\n'
+                '            "topic_keywords": [{"keyword": "후보 목록의 키워드", "evidence": "원문 그대로 인용"}]'
             )
 
         # 주석을 완전히 풀고 프롬프트를 명확하게 다듬었습니다.
@@ -125,6 +161,7 @@ def analyze_review(text, place_name=None):
             result['exclude_reason'] = None
         elif result.get('exclude_reason') not in ('job_posting', 'unrelated', 'other_notice'):
             result['exclude_reason'] = 'other_notice'
+        result['topic_keywords'] = _clean_topic_keywords(result.get('topic_keywords'), text) if place_name else []
         return result
 
     except Exception as e:
@@ -137,7 +174,7 @@ def analyze_review(text, place_name=None):
         return {
             "is_ad": False, "non_ad_probability": 50,
             "reason": "AI 연동 오류로 인한 분석 실패", "has_place_info": True,
-            "is_review": True, "exclude_reason": None,
+            "is_review": True, "exclude_reason": None, "topic_keywords": [],
             "analysis_failed": True,
             "credits_depleted": "credits are depleted" in str(e),
         }

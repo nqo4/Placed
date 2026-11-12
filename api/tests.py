@@ -747,7 +747,7 @@ class NaverReviewRefreshTests(TestCase):
             content_text=f"[{items[0]['title']}] {items[0]['description']}",
         )
         ReviewSource.objects.create(
-            place=place, source_type='blog', url=items[1]['link'], ad_probability=20,
+            place=place, source_type='blog', url=items[1]['link'], ad_probability=20, topic_keywords=[],
             content_text=f"[{items[1]['title']}] {items[1]['description']}",
         )
         mock_get.side_effect = self._blog_only_response(items)
@@ -760,6 +760,28 @@ class NaverReviewRefreshTests(TestCase):
         self.assertEqual(retried.ad_probability, 80)
         self.assertFalse(retried.analysis_failed)
         self.assertEqual(PlaceAnalysis.objects.get(name=place.name).ad_probability, 50)
+
+    @patch('api.naver_miner.extract_mood_keywords', return_value=[])
+    @patch('api.naver_miner.analyze_review')
+    @patch('api.naver_miner.requests.get')
+    def test_source_without_topic_keywords_is_reanalyzed_and_keywords_saved(self, mock_get, mock_analyze, mock_mood):
+        place = Place.objects.create(name="테스트카페", address="대전 유성구")
+        item = {"title": "테스트카페 후기", "description": "케이크가 맛있었어요", "link": "http://blog.example/1"}
+        ReviewSource.objects.create(place=place, source_type='blog', url=item['link'], ad_probability=20,
+                                    content_text=f"[{item['title']}] {item['description']}")
+        mock_get.side_effect = self._blog_only_response([item])
+        found = [{'keyword': '디저트가 맛있어요', 'evidence': '케이크가 맛있었어요'}]
+        mock_analyze.return_value = {'is_ad': False, 'non_ad_probability': 80, 'reason': '후기',
+                                     'topic_keywords': found}
+
+        naver_miner.refresh_existing_places(request_interval=0)
+
+        mock_analyze.assert_called_once()
+        self.assertEqual(place.review_sources.get().topic_keywords, found)
+
+        mock_analyze.reset_mock()
+        naver_miner.refresh_existing_places(request_interval=0)
+        mock_analyze.assert_not_called()
 
     @patch('api.naver_miner.extract_mood_keywords', return_value=[])
     @patch('api.naver_miner.analyze_review')
@@ -870,6 +892,7 @@ class NaverReviewRefreshTests(TestCase):
     def test_refresh_reuses_previous_analysis_for_unchanged_sources(self, mock_get, mock_analyze, mock_mood):
         place = Place.objects.create(name="재사용카페", address="대전 중구")
         ReviewSource.objects.create(
+            topic_keywords=[],
             place=place, source_type='blog', title='재사용카페 블로그0',
             url='http://blog.example/0', content_text='[재사용카페 블로그0] 예전 그대로인 본문',
             is_ad=False, ad_probability=20,
@@ -1008,6 +1031,7 @@ class NaverReviewRefreshTests(TestCase):
         """리뷰 소스가 이전과 완전히 동일하면(전부 재사용) 분위기 키워드 AI 호출도 생략해야 함."""
         place = Place.objects.create(name="재사용무드카페", address="대전 중구")
         ReviewSource.objects.create(
+            topic_keywords=[],
             place=place, source_type='blog', title='재사용무드카페 블로그0',
             url='http://blog.example/0', content_text='[재사용무드카페 블로그0] 예전 그대로인 본문',
             is_ad=False, ad_probability=20,
@@ -1094,6 +1118,7 @@ class NaverReviewRefreshTests(TestCase):
         """
         place = Place.objects.create(name="레거시무드카페", address="대전 중구")
         ReviewSource.objects.create(
+            topic_keywords=[],
             place=place, source_type='blog', title='레거시무드카페 블로그0',
             url='http://blog.example/0', content_text='[레거시무드카페 블로그0] 예전 그대로인 본문',
             is_ad=False, ad_probability=20,
@@ -1382,6 +1407,7 @@ class NaverReviewRefreshTests(TestCase):
         """이전에 has_place_info=False로 판정된 글은 내용이 그대로면 재분석 없이 계속 제외돼야 함."""
         place = Place.objects.create(name="재사용정보카페", address="대전 중구")
         ReviewSource.objects.create(
+            topic_keywords=[],
             place=place, source_type='blog', title='재사용정보카페 스치듯',
             url='http://blog.example/0', content_text='[재사용정보카페 스치듯] 그냥 지나가다 봤어요',
             is_ad=False, ad_probability=10, has_place_info=False,
@@ -1506,6 +1532,29 @@ class AnalyzeReviewResponseNormalizationTests(TestCase):
         prompt = generate.call_args[0][0]
         self.assertIn('"is_review"', prompt)
         self.assertIn('job_posting', prompt)
+        self.assertIn('"topic_keywords"', prompt)
+        self.assertIn('웨이팅이 있어요', prompt)
+
+    def test_topic_keywords_keep_only_listed_keywords_with_quoted_evidence(self):
+        with patch('api.gemini_service.genai') as mock_genai, override_settings(GEMINI_API_KEY='dummy'):
+            mock_genai.GenerativeModel.return_value.generate_content.return_value = Mock(text=json.dumps({
+                'is_ad': False, 'non_ad_probability': 80, 'reason': 'ok',
+                'topic_keywords': [
+                    {'keyword': '맛있어요', 'evidence': '빵이  맛있더라구요'},       # 공백만 다름 → 유지
+                    {'keyword': '맛있어요', 'evidence': '또 갈게요'},                # 중복 → 제거
+                    {'keyword': '분위기가 좋아요', 'evidence': '원문에 없는 말'},   # 근거 없음 → 제거
+                    {'keyword': '목록에없음', 'evidence': '빵이'},                  # 목록 밖 → 제거
+                    '문자열',
+                ],
+            }))
+            result = analyze_review('[텀하프트] 빵이 맛있더라구요 또 갈게요', '텀하프트')
+        self.assertEqual(result['topic_keywords'], [{'keyword': '맛있어요', 'evidence': '빵이  맛있더라구요'}])
+
+    def test_topic_keywords_empty_without_place_name(self):
+        with patch('api.gemini_service.genai') as mock_genai, override_settings(GEMINI_API_KEY='dummy'):
+            mock_genai.GenerativeModel.return_value.generate_content.return_value = Mock(
+                text=json.dumps({'topic_keywords': [{'keyword': '맛있어요', 'evidence': '본문'}]}))
+            self.assertEqual(analyze_review('본문')['topic_keywords'], [])
 
 
 class AdminVerificationActionTests(TestCase):
@@ -1798,6 +1847,27 @@ class FrontendCompatibilityTests(APITestCase):
         PlaceAnalysis.objects.create(name='호환카페', content_text='광고', is_ad=True, ad_probability=95)
         res = self.client.get(reverse('elastic-search'), {'search': '호환카페'})
         self.assertEqual([p['id'] for p in res.data], [self.place.id])
+
+    def test_place_detail_counts_review_keywords_from_non_ad_reviews_only(self):
+        def source(n, keywords, **fields):
+            ReviewSource.objects.create(place=self.place, source_type='blog', url=f'http://k/{n}',
+                                        content_text=f'글{n}', topic_keywords=keywords, **fields)
+        tasty, wait = {'keyword': '맛있어요', 'evidence': '맛'}, {'keyword': '웨이팅이 있어요', 'evidence': '줄'}
+        source(1, [tasty, wait], ad_probability=10)
+        source(2, [tasty], ad_probability=20)
+        source(3, [tasty, wait], ad_probability=90)                     # 광고
+        source(4, [wait], ad_probability=10, is_review=False)           # 공고
+        source(5, None, ad_probability=10)                               # 키워드 미분석
+        source(6, [{'keyword': '목록에없음', 'evidence': 'x'}], ad_probability=10)
+
+        res = self.client.get(reverse('place-detail', args=[self.place.id]))
+
+        self.assertEqual(res.data['review_keywords'], [
+            {'keyword': '맛있어요', 'count': 2, 'sentiment': 'positive'},
+            {'keyword': '웨이팅이 있어요', 'count': 1, 'sentiment': 'negative'},
+        ])
+        reviews = self.client.get(reverse('place-reviews', args=[self.place.id])).data
+        self.assertEqual(next(r for r in reviews if r['content'] == '글1')['keywords'], ['맛있어요', '웨이팅이 있어요'])
 
     def test_recent_places_lists_latest_view_first_without_duplicates(self):
         second = Place.objects.create(name='두번째카페', address='대전 유성구')

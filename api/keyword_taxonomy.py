@@ -34,6 +34,33 @@ MOOD_KEYWORDS = [
 MAX_MOOD_KEYWORDS_PER_PLACE = 5
 
 
+# [후기 키워드] 글 하나하나에서 글쓴이가 직접 평가한 내용을 뽑아 장소별로 "맛있어요 8"처럼
+# 집계합니다(광고가 아닌 후기만). 광고 판정과 같은 Gemini 호출 안에서 이 목록 안에서만 고르게
+# 하고, 목록 밖의 값과 원문에 없는 근거는 서버에서 버립니다(api/gemini_service.py).
+REVIEW_TOPIC_KEYWORDS = {
+    "맛있어요": "positive",
+    "디저트가 맛있어요": "positive",
+    "양이 많아요": "positive",
+    "메뉴가 다양해요": "positive",
+    "가성비가 좋아요": "positive",
+    "분위기가 좋아요": "positive",
+    "조용해요": "positive",
+    "사진 찍기 좋아요": "positive",
+    "매장이 넓어요": "positive",
+    "친절해요": "positive",
+    "주차가 편해요": "positive",
+    "단체로 가기 좋아요": "positive",
+    "혼밥하기 좋아요": "positive",
+    "맛이 평범해요": "negative",
+    "양이 적어요": "negative",
+    "가격이 비싸요": "negative",
+    "응대가 아쉬워요": "negative",
+    "웨이팅이 있어요": "negative",
+    "매장이 좁아요": "negative",
+    "시끄러워요": "negative",
+}
+
+
 # [오늘의 추천 장소] 로그인 첫 화면에 식당/카페/술집 각 1곳씩 보여주기 위해, Place.category
 # (네이버 업종 분류, category_tokens()로 토큰화됨) 토큰을 3개 그룹 중 하나로 묶습니다.
 # 네이버 지역 검색은 술집을 "음식점>이자카야", "음식점>호프,요리주점"처럼 음식점 하위로
