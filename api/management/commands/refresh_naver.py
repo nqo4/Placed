@@ -44,6 +44,11 @@ class Command(BaseCommand):
             help='광고가 아닌 후기가 이 수보다 적은 장소만 글을 더 모아 다시 분석합니다. 예: --fewer-than 5'
         )
         parser.add_argument(
+            '--missing-keywords', action='store_true',
+            help='후기 키워드를 아직 뽑지 않았거나 분석에 실패한 글이 남은 장소만 처리합니다. '
+                 '중간에 멈춘 전체 재분석을 이어서 할 때 사용하세요.'
+        )
+        parser.add_argument(
             '--limit', type=int, default=None,
             help='처리할 장소 수 상한. 시험 삼아 몇 곳만 돌려볼 때 사용하세요.'
         )
@@ -56,6 +61,7 @@ class Command(BaseCommand):
                 only_new=options['only_new'],
                 only_failed=options['only_failed'],
                 fewer_than=options['fewer_than'],
+                missing_keywords=options['missing_keywords'],
                 limit=options['limit'],
             )
         except GeminiCreditsDepleted:

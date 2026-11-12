@@ -764,6 +764,26 @@ class NaverReviewRefreshTests(TestCase):
     @patch('api.naver_miner.extract_mood_keywords', return_value=[])
     @patch('api.naver_miner.analyze_review')
     @patch('api.naver_miner.requests.get')
+    def test_missing_keywords_skips_places_already_done(self, mock_get, mock_analyze, mock_mood):
+        done = Place.objects.create(name="완료카페", address="대전 유성구")
+        ReviewSource.objects.create(place=done, source_type='blog', url='http://d/1', content_text='글',
+                                    topic_keywords=[])
+        pending = Place.objects.create(name="미완료카페", address="대전 유성구")
+        ReviewSource.objects.create(place=pending, source_type='blog', url='http://p/1', content_text='글')
+        failed = Place.objects.create(name="실패카페", address="대전 유성구")
+        ReviewSource.objects.create(place=failed, source_type='blog', url='http://f/1', content_text='글',
+                                    topic_keywords=[], analysis_failed=True)
+        mock_get.side_effect = lambda url, headers=None, timeout=None: self._items_response([])
+        mock_analyze.return_value = {'is_ad': False, 'non_ad_probability': 50, 'reason': '안내'}
+
+        naver_miner.refresh_existing_places(request_interval=0, missing_keywords=True)
+
+        searched = {_query_param(c.args[0]) for c in mock_get.call_args_list}
+        self.assertEqual(searched, {'미완료카페 대전 유성구', '실패카페 대전 유성구'})
+
+    @patch('api.naver_miner.extract_mood_keywords', return_value=[])
+    @patch('api.naver_miner.analyze_review')
+    @patch('api.naver_miner.requests.get')
     def test_source_without_topic_keywords_is_reanalyzed_and_keywords_saved(self, mock_get, mock_analyze, mock_mood):
         place = Place.objects.create(name="테스트카페", address="대전 유성구")
         item = {"title": "테스트카페 후기", "description": "케이크가 맛있었어요", "link": "http://blog.example/1"}

@@ -1189,7 +1189,8 @@ def _refresh_place_reviews(place, headers, default_user, request_interval):
     )
 
 
-def refresh_existing_places(request_interval=0.2, only_new=False, only_failed=False, fewer_than=None, limit=None):
+def refresh_existing_places(request_interval=0.2, only_new=False, only_failed=False, fewer_than=None, limit=None,
+                            missing_keywords=False):
     """
     [리뷰 최신화 로직 - 장소 수집과 분리] 새로 장소를 찾지 않고(지역 검색 API 호출 없음),
     DB에 이미 등록된 장소들의 리뷰만 블로그+카페글에서 모아 평균 광고 확률로 갱신합니다.
@@ -1228,6 +1229,12 @@ def refresh_existing_places(request_interval=0.2, only_new=False, only_failed=Fa
         places = list(Place.objects.filter(
             Q(review_sources__analysis_failed=True) | Q(name__in=failed_names)
         ).distinct())
+    elif missing_keywords:
+        # 후기 키워드를 아직 뽑지 않았거나 분석에 실패한 글이 남은 장소(글이 하나도 없는 장소 포함).
+        # 중간에 멈춘 전체 재분석을 끝난 장소는 건너뛰고 이어서 진행할 때 씁니다.
+        places = list(Place.objects.filter(
+            Q(review_sources__topic_keywords__isnull=True) | Q(review_sources__analysis_failed=True)
+        ).distinct().order_by('id'))
     elif fewer_than is not None:
         ad_threshold = getattr(settings, 'AD_EXCLUDE_THRESHOLD', 70)
         counted = Q(
