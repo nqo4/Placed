@@ -7,6 +7,7 @@ export const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000"
 export const API_ROUTES = {
 
   LOGIN: "/api/users/login/",
+  LOGIN_REFRESH: "/api/users/login/refresh/",
   SIGNUP: "/api/users/signup/",
   CHECK_ID: "/api/users/check-id/",
 
@@ -16,6 +17,7 @@ export const API_ROUTES = {
   INQUIRY_DETAIL: "/api/inquiries/",
 
   PLACE_DETAIL: "/api/places/",
+  RECENT_PLACES: "/api/places/recent/",
   REVIEWS_BY_PLACE: "/api/reviews/place/",
   CREATE_REVIEW: "/api/reviews/create/",
   MY_REVIEWS: "/api/reviews/mine/",

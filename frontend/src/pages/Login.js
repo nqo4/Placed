@@ -19,6 +19,7 @@ function Login() {
     try {
       const res = await loginUser(id, password);
       localStorage.setItem("token", res.data.token);
+      localStorage.setItem("refresh", res.data.refresh);
       localStorage.setItem("is_admin", res.data.is_staff ? "true" : "false");
       localStorage.setItem("user", JSON.stringify(res.data.user));
       if (res.data.is_staff) {

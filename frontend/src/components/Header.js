@@ -19,7 +19,7 @@ function Header({ hideNav = false }) {
       {!hideNav && (
         <nav className="header-nav">
           <button onClick={() => navigate("/main")}>홈</button>
-          <button onClick={() => navigate("/my-places")}>내 장소</button>
+          <button onClick={() => navigate("/my-places")}>최근 본 장소</button>
           <button onClick={() => navigate("/mypage")}>마이페이지</button>
         </nav>
       )}

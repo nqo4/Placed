@@ -3,14 +3,15 @@ import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "../pages_CSS/MyPage.css";
+import { clearAuth } from "../api/axiosInstance";
 
 function MyPage() {
   const navigate = useNavigate();
 
   const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
   const [userInfo, setUserInfo] = useState({
-    name: savedUser.username || "사용자 (더미)",
-    email: savedUser.email || "user@example.com (더미)",
+    name: savedUser.first_name || "",
+    email: savedUser.username || "",
     newPassword: "",
     confirmPassword: "",
   });
@@ -39,11 +40,11 @@ function MyPage() {
           <nav>
             <button className="menu-btn active">내 계정 관리</button>
             <button className="menu-btn" onClick={() => navigate("/reviews")}>리뷰 관리</button>
-            <button className="menu-btn" onClick={() => navigate("/my-places")}>내 장소</button>
+            <button className="menu-btn" onClick={() => navigate("/my-places")}>최근 본 장소</button>
             <button className="menu-btn" onClick={() => navigate("/contact")}>문의하기</button>
             <div className="sidebar-divider"></div>
             <button className="menu-btn logout-btn" onClick={() => {
-              localStorage.removeItem("token");
+              clearAuth();
               navigate("/");
             }}>
               로그아웃
@@ -59,7 +60,7 @@ function MyPage() {
               <span className="avatar-icon">👤</span>
             </div>
             <div className="profile-text">
-              <p className="profile-name">{userInfo.name}</p>
+              <p className="profile-name">{userInfo.name || userInfo.email}</p>
             </div>
           </div>
 

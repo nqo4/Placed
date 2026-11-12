@@ -59,7 +59,7 @@ function MainUser() {
       <Header />
       <section className="welcome">
         <h1>안녕하세요 👋</h1>
-        <p>당신에게 어울리는 새로운 공간을 찾아보세요.</p>
+        <p>PLACED는 AI가 광고 글을 걸러내고 진짜 후기만 보여주는 장소 검색 사이트예요.</p>
         <form
           className="main-search"
           onSubmit={(e) => {
