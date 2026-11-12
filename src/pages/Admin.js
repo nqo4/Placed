@@ -7,6 +7,7 @@ import {
   getAdminReviews, getAdminInquiries
 } from "../api/adminAPI";
 import "../pages_CSS/Admin.css";
+import { clearAuth } from "../api/axiosInstance";
 
 const CATEGORY_LABEL = { account: "계정 문의", service: "서비스 이용", etc: "기타" };
 
@@ -85,8 +86,7 @@ function Admin() {
             ))}
             <div className="sidebar-divider" />
             <button className="menu-btn logout-btn" onClick={() => {
-              localStorage.removeItem("token");
-              localStorage.removeItem("is_admin");
+              clearAuth();
               navigate("/");
             }}>
               로그아웃

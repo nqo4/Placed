@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "../pages_CSS/MyPage.css";
+import { clearAuth } from "../api/axiosInstance";
 
 function MyPage() {
   const navigate = useNavigate();
@@ -39,11 +40,11 @@ function MyPage() {
           <nav>
             <button className="menu-btn active">내 계정 관리</button>
             <button className="menu-btn" onClick={() => navigate("/reviews")}>리뷰 관리</button>
-            <button className="menu-btn" onClick={() => navigate("/my-places")}>내 장소</button>
+            <button className="menu-btn" onClick={() => navigate("/my-places")}>최근 본 장소</button>
             <button className="menu-btn" onClick={() => navigate("/contact")}>문의하기</button>
             <div className="sidebar-divider"></div>
             <button className="menu-btn logout-btn" onClick={() => {
-              localStorage.removeItem("token");
+              clearAuth();
               navigate("/");
             }}>
               로그아웃

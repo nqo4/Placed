@@ -5,14 +5,43 @@ import Footer from "../components/Footer";
 import { searchKeyword } from "../api/searchAPI";
 import "../pages_CSS/SearchResults.css";
 
+const PAGE_SIZE = 10;
+
+const BLOCK_SIZE = 5;
+
 function SearchResults() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const keyword = searchParams.get("keyword") || "";
 
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [query, setQuery] = useState(keyword);
+
+  useEffect(() => {
+    setQuery(keyword);
+  }, [keyword]);
+
+  const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
+  const page = Math.min(Math.max(1, Number(searchParams.get("page")) || 1), totalPages);
+  const pageResults = results.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // 5개씩 묶어서 번호 표시
+  const blockStart = Math.floor((page - 1) / BLOCK_SIZE) * BLOCK_SIZE + 1;
+  const blockEnd = Math.min(blockStart + BLOCK_SIZE - 1, totalPages);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const q = query.trim();
+    if (!q) return;
+    navigate(`/search?keyword=${encodeURIComponent(q)}`);
+  };
+
+  const goToPage = (n) => {
+    setSearchParams({ keyword, page: String(n) });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   useEffect(() => {
     if (!keyword) return;
@@ -40,6 +69,15 @@ function SearchResults() {
         <div className="search-title-section">
           <h2>검색 결과</h2>
           <p className="keyword-info">"{keyword}"에 대한 검색 결과입니다.</p>
+          <form className="results-search" onSubmit={handleSearch}>
+            <input
+              type="text"
+              placeholder="어디로 갈까요?"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <button type="submit">검색</button>
+          </form>
         </div>
 
         {loading ? (
@@ -60,10 +98,10 @@ function SearchResults() {
         ) : results.length > 0 ? (
           <div className="results-list-wrapper">
             <p className="ai-notice-text">
-              "{keyword}"에 대한 <strong>AI 분석 완료</strong> 리스트입니다.
+              "{keyword}"에 대한 <strong>AI 분석 완료</strong> 리스트입니다. (총 {results.length}곳)
             </p>
             <div className="results-grid">
-              {results.map((item) => (
+              {pageResults.map((item) => (
                 <div key={item.id} className="result-card" onClick={() => navigate(`/place/${item.id}`)}>
                   <div className="card-img-box">
                     <img
@@ -90,6 +128,17 @@ function SearchResults() {
                 </div>
               ))}
             </div>
+            {totalPages > 1 && (
+              <nav className="pagination">
+                <button disabled={blockStart === 1} onClick={() => goToPage(blockStart - BLOCK_SIZE)}>‹</button>
+                {Array.from({ length: blockEnd - blockStart + 1 }, (_, i) => blockStart + i).map((n) => (
+                  <button key={n} className={n === page ? "active" : ""} onClick={() => goToPage(n)}>
+                    {n}
+                  </button>
+                ))}
+                <button disabled={blockEnd === totalPages} onClick={() => goToPage(blockEnd + 1)}>›</button>
+              </nav>
+            )}
           </div>
         ) : (
           <div className="no-result-wrapper">

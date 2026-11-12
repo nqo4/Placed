@@ -1,95 +1,81 @@
 import React, { useEffect, useState } from "react";
-// import { getMyPlaces, deleteMyPlace } from "../api/placeAPI"; // 백엔드 연결 시 주석 해제, 아래 더미 블록 삭제
 import { useNavigate } from "react-router-dom";
+import { getRecentPlaces } from "../api/placeAPI";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "../pages_CSS/MyPlaces.css";
 
-// 임시 더미데이터
-const DUMMY_PLACES = [
-  {
-    id: 1,
-    place_name: "성심당 본점 (더미)",
-    address: "대전 중구 대종로 480번길 15",
-  },
-  {
-    id: 2,
-    place_name: "카페 온도 (더미)",
-    address: "대전 유성구 궁동 456-1",
-  },
-  {
-    id: 3,
-    place_name: "대전 엑스포 과학공원 (더미)",
-    address: "대전 유성구 대덕대로 480",
-  },
-];
+const FALLBACK_IMG = "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?q=80&w=300";
+
+function timeAgo(value) {
+  const date = new Date(value);
+  const diff = (Date.now() - date.getTime()) / 1000;
+  if (diff < 60) return "방금 전";
+  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+  if (diff < 86400 * 7) return `${Math.floor(diff / 86400)}일 전`;
+  return `${String(date.getMonth() + 1).padStart(2, "0")}.${String(date.getDate()).padStart(2, "0")}`;
+}
 
 function MyPlaces() {
   const navigate = useNavigate();
+  const isLoggedIn = !!localStorage.getItem("token");
   const [places, setPlaces] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(isLoggedIn);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // 백엔드 연결 시 아래로 교체
-    // getMyPlaces()
-    //   .then((res) => setPlaces(res.data))
-    //   .catch((err) => console.error(err))
-    //   .finally(() => setLoading(false));
+    if (!isLoggedIn) return;
+    getRecentPlaces()
+      .then((res) => setPlaces(res.data))
+      .catch(() => setError("최근 본 장소를 불러오지 못했습니다."))
+      .finally(() => setLoading(false));
+  }, [isLoggedIn]);
 
-    setTimeout(() => {
-      setPlaces(DUMMY_PLACES);
-      setLoading(false);
-    }, 300);
-  }, []);
+  const renderBody = () => {
+    if (!isLoggedIn) {
+      return (
+        <div className="empty">
+          <p>로그인하면 최근 본 장소를 볼 수 있어요.</p>
+          <button className="detail-btn" onClick={() => navigate("/login")}>로그인</button>
+        </div>
+      );
+    }
+    if (loading) return <p className="loading">불러오는 중...</p>;
+    if (error) return <p className="empty">{error}</p>;
+    if (places.length === 0) return <p className="empty">아직 본 장소가 없어요.</p>;
 
-  const handleDelete = (id) => {
-    if (!window.confirm("찜 목록에서 삭제하시겠습니까?")) return;
-
-    // 백엔드 연결 시 아래로 교체
-    // deleteMyPlace(id)
-    //   .then(() => setPlaces((prev) => prev.filter((p) => p.id !== id)))
-    //   .catch((err) => console.error(err));
-
-    setPlaces((prev) => prev.filter((p) => p.id !== id));
+    return (
+      <ul className="places-list">
+        {places.map((p) => (
+          <li key={p.id} className="place-item" onClick={() => navigate(`/place/${p.id}`)}>
+            <img
+              className="place-thumb"
+              src={p.images?.[0]?.url || p.image_url || FALLBACK_IMG}
+              alt={p.name}
+              onError={(e) => { e.currentTarget.src = FALLBACK_IMG; }}
+            />
+            <div className="place-info">
+              <h4>{p.name}</h4>
+              <p>{p.address}</p>
+            </div>
+            <span className="place-viewed">{timeAgo(p.viewed_at)}</span>
+          </li>
+        ))}
+      </ul>
+    );
   };
-
-  if (loading) return <p className="loading">불러오는 중...</p>;
 
   return (
     <div className="places-page">
       <Header />
 
       <section className="places-section">
-        <h2>내 장소 <span className="places-count">({places.length}개)</span></h2>
-
-        {places.length === 0 ? (
-          <p className="empty">저장된 장소가 없습니다.</p>
-        ) : (
-          <ul className="places-list">
-            {places.map((p) => (
-              <li key={p.id} className="place-item">
-                <div className="place-info">
-                  <h4>{p.place_name}</h4>
-                  <p>{p.address}</p>
-                </div>
-                <div className="place-actions">
-                  <button
-                    className="detail-btn"
-                    onClick={() => navigate(`/place/${p.id}`)}
-                  >
-                    상세보기
-                  </button>
-                  <button
-                    className="delete-btn"
-                    onClick={() => handleDelete(p.id)}
-                  >
-                    찜 해제
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+        <h2>
+          최근 본 장소
+          {isLoggedIn && !loading && !error && <span className="places-count"> ({places.length}개)</span>}
+        </h2>
+        {renderBody()}
       </section>
 
       <Footer />
