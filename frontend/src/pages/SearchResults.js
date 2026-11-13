@@ -8,7 +8,8 @@ import "../pages_CSS/SearchResults.css";
 const PAGE_SIZE = 10;
 
 const BLOCK_SIZE = 5;
-const FALLBACK_IMG = "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?q=80&w=500";
+const SUGGESTED_KEYWORDS = ["유성 맛집", "도안동", "카페"];
+const FALLBACK_IMG = process.env.PUBLIC_URL + "/placeholder.svg";
 
 const imageOf = (item) => item.image || item.images?.[0]?.url || item.images?.[0] || item.image_url || FALLBACK_IMG;
 
@@ -91,7 +92,7 @@ function SearchResults() {
           <form className="results-search" onSubmit={handleSearch}>
             <input
               type="text"
-              placeholder="어디로 갈까요?"
+             
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -215,11 +216,19 @@ function SearchResults() {
         ) : (
           <div className="no-result-wrapper">
             <div className="empty-box">
-              <img src="/no_result_icon.png" alt="No Result" className="error-icon" />
-              <p>검색 결과가 없습니다.</p>
-              <button className="back-btn" onClick={() => navigate("/main")}>
-                다른 검색어로 찾아보기
-              </button>
+              <div className="empty-icon">🔍</div>
+              <p className="empty-title">"{keyword}"에 대한 결과가 없어요</p>
+              <p className="empty-hint">
+                지금은 <strong>대전 지역</strong> 장소만 검색돼요.<br />
+                '유성', '카페'처럼 짧게 검색해 보세요.
+              </p>
+              <div className="suggest-list">
+                {SUGGESTED_KEYWORDS.map((word) => (
+                  <button key={word} onClick={() => navigate(`/search?keyword=${encodeURIComponent(word)}`)}>
+                    {word}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}

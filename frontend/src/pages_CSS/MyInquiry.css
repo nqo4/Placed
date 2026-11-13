@@ -37,3 +37,23 @@
 .write-btn:hover {
   background-color: #1b63e0;
 }
+
+/* 모바일 */
+@media (max-width: 768px) {
+  .inquiry-section {
+    padding: 40px 16px 48px;
+  }
+
+  .inquiry-section h2 {
+    font-size: 1.6rem;
+  }
+
+  .inquiry-list {
+    padding: 0;
+    text-align: left;
+  }
+
+  .inquiry-item p {
+    word-break: break-word;
+  }
+}

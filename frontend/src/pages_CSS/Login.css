@@ -103,3 +103,32 @@
 .highlight-signup:hover {
   text-decoration: underline;
 }
+
+/* 모바일 */
+@media (max-width: 768px) {
+  .login-container {
+    min-height: 100vh;
+    height: auto;
+    padding: 24px 16px;
+  }
+
+  .login-box {
+    width: 100%;
+    max-width: 360px;
+    padding: 32px 24px;
+  }
+
+  .login-box:hover {
+    transform: none;
+  }
+
+  .login-box h1 {
+    font-size: 22px;
+    margin-bottom: 24px;
+  }
+
+  /* iOS에서 입력 시 자동 확대 방지 */
+  .login-box input {
+    font-size: 16px;
+  }
+}

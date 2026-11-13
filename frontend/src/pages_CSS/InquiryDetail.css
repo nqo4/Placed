@@ -77,3 +77,26 @@
   margin-top: 15px;
   text-align: center;
 }
+
+/* 모바일 */
+@media (max-width: 768px) {
+  .detail-section {
+    width: auto;
+    margin: 16px;
+    padding: 20px 16px;
+  }
+
+  .detail-section h2 {
+    font-size: 22px;
+    margin-bottom: 18px;
+  }
+
+  .detail-box {
+    padding: 14px 16px;
+  }
+
+  .detail-box p {
+    font-size: 15px;
+    word-break: break-word;
+  }
+}

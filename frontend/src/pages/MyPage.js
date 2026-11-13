@@ -21,6 +21,11 @@ function MyPage() {
     setUserInfo({ ...userInfo, [name]: value });
   };
 
+  const handleLogout = () => {
+    clearAuth();
+    navigate("/");
+  };
+
   const handleSave = (e) => {
     e.preventDefault();
     if (userInfo.newPassword !== userInfo.confirmPassword) {
@@ -43,10 +48,7 @@ function MyPage() {
             <button className="menu-btn" onClick={() => navigate("/my-places")}>최근 본 장소</button>
             <button className="menu-btn" onClick={() => navigate("/contact")}>문의하기</button>
             <div className="sidebar-divider"></div>
-            <button className="menu-btn logout-btn" onClick={() => {
-              clearAuth();
-              navigate("/");
-            }}>
+            <button className="menu-btn logout-btn" onClick={handleLogout}>
               로그아웃
             </button>
           </nav>
@@ -110,6 +112,7 @@ function MyPage() {
             </div>
           </form>
         </main>
+        <button className="mobile-logout" onClick={handleLogout}>로그아웃</button>
       </div>
       <Footer />
     </div>

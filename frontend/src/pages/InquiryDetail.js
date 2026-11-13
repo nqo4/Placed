@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getInquiryDetail } from "../api/inquiryAPI";
 import Footer from "../components/Footer";
+import Header from "../components/Header";
 import "../pages_CSS/InquiryDetail.css";
 
 function InquiryDetail() {
@@ -18,17 +19,7 @@ function InquiryDetail() {
   return (
     <div className="detail-page">
     
-      <header className="user-header">
-        <div className="logo" onClick={() => navigate("/main")}>
-          <img src="/placed_logo.png" alt="PLACED Logo" className="logo-img" />
-          <span className="logo-text">PLACED</span>
-        </div>
-
-        <nav className="nav">
-          <button onClick={() => navigate("/main")}>홈</button>
-          <button onClick={() => navigate("/inquiries")}>내 문의내역</button>
-        </nav>
-      </header>
+      <Header />
 
    
       <section className="detail-section">

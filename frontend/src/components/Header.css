@@ -53,6 +53,13 @@
   padding: 8px 20px !important;
   border-radius: 10px !important;
 }
+.header-nav .header-login-btn {
+  background: #2a7fff;
+  color: #fff;
+  padding: 8px 18px;
+  border-radius: 10px;
+}
+
 /* 모바일 */
 @media (max-width: 768px) {
   .common-header {

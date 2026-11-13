@@ -4,11 +4,6 @@ import { loginUser } from "../api/userAPI";
 import Footer from "../components/Footer";
 import "../pages_CSS/Login.css";
 
-// 임시 더미 계정
-// const DUMMY_USERS = [
-//   { id: "user1", password: "1234" },
-// ];
-
 function Login() {
   const navigate = useNavigate();
   const [id, setId] = useState("");
@@ -31,18 +26,6 @@ function Login() {
       console.error(err);
       alert("아이디 또는 비밀번호가 잘못되었습니다.");
     }
-
-    // 더미 로그인 (백엔드 연결 끊길 시 주석 해제)
-    // const user = DUMMY_USERS.find(
-    //   (u) => u.id === id && u.password === password
-    // );
-    // if (user) {
-    //   localStorage.setItem("token", "dummy-token");
-    //   alert("로그인 성공!");
-    //   navigate("/main");
-    // } else {
-    //   alert("아이디 또는 비밀번호가 잘못되었습니다.");
-    // }
   };
 
   return (

@@ -58,18 +58,20 @@ function MainUser() {
     <div className="user-page">
       <Header />
       <section className="welcome">
-        <h1>안녕하세요 👋</h1>
-        <p>PLACED는 AI가 광고 글을 걸러내고 진짜 후기만 보여주는 장소 검색 사이트예요.</p>
+        <h1>오늘은 어디 가볼까요?</h1>
+        <p>광고는 AI가 걸러둘게요</p>
         <form
           className="main-search"
           onSubmit={(e) => {
             e.preventDefault();
-            navigate(`/search?keyword=${keyword}`);
+            const q = keyword.trim();
+            if (!q) return;
+            navigate(`/search?keyword=${encodeURIComponent(q)}`);
           }}
         >
           <input
             type="text"
-            placeholder="어디로 갈까요?"
+           
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
           />

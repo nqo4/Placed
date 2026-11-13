@@ -81,3 +81,31 @@
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* 모바일 */
+@media (max-width: 768px) {
+  .contact-section {
+    padding: 40px 16px 48px;
+  }
+
+  .contact-section h2 {
+    font-size: 1.6rem;
+  }
+
+  .contact-section p {
+    margin-bottom: 24px;
+  }
+
+  .contact-form select,
+  .contact-form textarea {
+    width: 100%;
+    max-width: 360px;
+    box-sizing: border-box;
+    font-size: 16px;
+  }
+
+  .contact-form button {
+    width: 100%;
+    max-width: 360px;
+  }
+}

@@ -31,8 +31,8 @@ function MainGuest() {
           <h1>광고 없는 진짜 리뷰,<br />이제 진짜만 보세요.</h1>
 
           <p>
-            PLACED는 AI가 광고 게시물을 걸러내고,<br />
-            신뢰할 수 있는 리뷰만을 보여주는 공간 추천 플랫폼입니다.
+            AI가 협찬·광고 글을 걸러내고<br />
+            믿을 수 있는 맛집·카페 후기만 모았어요.
           </p>
           <button className="cta-btn" onClick={() => navigate("/login")}>
             지금 시작하기
@@ -57,29 +57,11 @@ function MainGuest() {
           <div className="feature-card">
             <img src="https://cdn-icons-png.flaticon.com/512/1029/1029183.png" alt="개인 맞춤 추천" />
             <h3>개인 맞춤 추천</h3>
-            <p>사용자 취향을 학습하여 최적의 공간을 추천합니다.</p>
+            <p>사용자 취향을 학습하여 딱 맞는 맛집·카페를 추천합니다.</p>
           </div>
         </div>
       </section>
 
-     
-      <section className="recommend">
-        <h2>지금 인기 있는 공간</h2>
-        <div className="card-list">
-          <div className="card">
-            <img src="https://t4.ftcdn.net/jpg/16/79/44/21/240_F_1679442196_OEsi0AFKie6hYMBpvmXwwRgRYGV4U6Lz.jpg" alt="카페" />
-            <p>카페</p>
-          </div>
-          <div className="card">
-            <img src="https://t4.ftcdn.net/jpg/16/79/44/21/240_F_1679442196_OEsi0AFKie6hYMBpvmXwwRgRYGV4U6Lz.jpg" alt="식당" />
-            <p>식당</p>
-          </div>
-          <div className="card">
-            <img src="https://t4.ftcdn.net/jpg/16/79/44/21/240_F_1679442196_OEsi0AFKie6hYMBpvmXwwRgRYGV4U6Lz.jpg" alt="모임공간" />
-            <p>스터디룸</p>
-          </div>
-        </div>
-      </section>
 
      
       <Footer />

@@ -13,8 +13,5 @@ export const createReview = (placeId, content) =>
 export const getMyReviews = () =>
   API.get(API_ROUTES.MY_REVIEWS);
 
-export const updateReview = (id, content, rating) =>
-  API.patch(`/api/reviews/${id}/`, { content, rating });
-
 export const deleteReview = (id) =>
   API.delete(`/api/reviews/${id}/`);

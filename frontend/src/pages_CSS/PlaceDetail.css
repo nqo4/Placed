@@ -201,7 +201,7 @@
 
 .place-map {
   width: 100%;
-  height: 200px;
+  height: 150px;
   border-radius: 12px;
   overflow: hidden;
   background: #eee;
@@ -248,8 +248,13 @@
   border-color: #2a7fff;
 }
 
+.review-form-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .review-form button {
-  align-self: flex-end;
   padding: 8px 20px;
   background: #2a7fff;
   color: #fff;
@@ -259,9 +264,30 @@
   cursor: pointer;
 }
 
+.review-form button.secondary {
+  background: #f1f5f9;
+  color: #555;
+}
+
 .review-form button:disabled {
   background: #b9d3ff;
   cursor: default;
+}
+
+.review-write-btn {
+  width: 100%;
+  padding: 11px;
+  margin-bottom: 8px;
+  border: 1px solid #b9d3ff;
+  border-radius: 10px;
+  background: #fff;
+  color: #2a7fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.review-write-btn:hover {
+  background: #f5f9ff;
 }
 
 .review-login {
@@ -276,7 +302,7 @@
   cursor: pointer;
 }
 
-/* 리뷰 구분 배지 */
+/* 리뷰 날짜 */
 .review-meta {
   display: flex;
   align-items: center;
@@ -284,33 +310,164 @@
   margin-bottom: 6px;
 }
 
-.review-badge {
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 6px;
-}
-
-.review-badge.visitor {
-  background: #e8f7ee;
-  color: #1f9d55;
-}
-
-.review-badge.external {
-  background: #f1f3f5;
-  color: #666;
-}
-
 .review-date {
   color: #aaa;
   font-size: 0.8rem;
 }
-
-.review-source-link {
-  margin-left: auto;
-  font-size: 0.78rem;
+.review-total {
   color: #2a7fff;
-  text-decoration: none;
+  margin-left: 2px;
+}
+
+/* 키워드 리뷰 */
+.keyword-summary {
+  background: #f8fbff;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.keyword-title {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.keyword-title.negative {
+  margin-top: 14px;
+  color: #888;
+}
+
+.keyword-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.keyword-bars li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.keyword-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: #dceaff;
+  border-radius: 8px;
+}
+
+.keyword-label,
+.keyword-count {
+  position: relative;
+  font-size: 0.88rem;
+  color: #333;
+}
+
+.keyword-count {
+  font-weight: 700;
+  color: #2a7fff;
+}
+
+.keyword-more {
+  margin-top: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #2a7fff;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.keyword-negatives {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #999;
+}
+
+.review-keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-bottom: 6px;
+}
+
+.review-keywords span {
+  font-size: 0.75rem;
+  color: #2a7fff;
+}
+
+/* 불러오기 실패 */
+.load-error {
+  flex: 1;
+  text-align: center;
+  padding: 100px 20px;
+  color: #444;
+}
+
+.load-error p {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.load-error .load-error-sub {
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: #888;
+}
+
+.load-error-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.load-error-buttons button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  background: #2a7fff;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.load-error-buttons button.secondary {
+  background: #f1f5f9;
+  color: #555;
+}
+
+/* 패드 (카드 두 개가 나란히 안 들어가는 폭) */
+@media (max-width: 1024px) {
+  .detail-container {
+    flex-direction: column;
+    align-items: stretch;
+    max-width: 640px;
+    width: 100%;
+    margin: 24px auto;
+    padding: 0 20px;
+    box-sizing: border-box;
+  }
+
+  .info-card,
+  .report-card {
+    width: 100%;
+    box-sizing: border-box;
+  }
 }
 
 /* 모바일 */
@@ -369,6 +526,6 @@
   }
 
   .place-map {
-    height: 180px;
+    height: 130px;
   }
 }

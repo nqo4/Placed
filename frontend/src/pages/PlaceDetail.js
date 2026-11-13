@@ -89,7 +89,70 @@ function PlaceMap({ name, lat, lng }) {
   );
 }
 
-const SOURCE_LABEL = { blog: "블로그", cafearticle: "카페" };
+const KEYWORD_EMOJI = {
+  "맛있어요": "😋",
+  "디저트가 맛있어요": "🍰",
+  "양이 많아요": "🍚",
+  "메뉴가 다양해요": "📋",
+  "가성비가 좋아요": "💰",
+  "분위기가 좋아요": "✨",
+  "조용해요": "🤫",
+  "사진 찍기 좋아요": "📸",
+  "매장이 넓어요": "🏠",
+  "친절해요": "😊",
+  "주차가 편해요": "🚗",
+  "단체로 가기 좋아요": "👥",
+  "혼밥하기 좋아요": "🙋",
+};
+
+const KEYWORD_PREVIEW = 3;
+
+function KeywordSummary({ keywords }) {
+  const [showAll, setShowAll] = useState(false);
+  const positives = keywords.filter((k) => k.sentiment === "positive");
+  const negatives = keywords.filter((k) => k.sentiment === "negative");
+  if (positives.length === 0 && negatives.length === 0) return null;
+
+  const max = Math.max(1, ...positives.map((k) => k.count));
+  const shown = showAll ? positives : positives.slice(0, KEYWORD_PREVIEW);
+  // 접혀 있을 때 숨겨지는 개수 (남은 긍정 + 부정 전부)
+  const hiddenCount = Math.max(0, positives.length - KEYWORD_PREVIEW) + (positives.length > 0 ? negatives.length : 0);
+  const showNegatives = negatives.length > 0 && (showAll || positives.length === 0);
+
+  return (
+    <div className="keyword-summary">
+      {positives.length > 0 && (
+        <>
+          <p className="keyword-title">이런 점이 좋았어요</p>
+          <ul className="keyword-bars">
+            {shown.map((k) => (
+              <li key={k.keyword}>
+                <div className="keyword-bar" style={{ width: `${(k.count / max) * 100}%` }} />
+                <span className="keyword-label">
+                  {KEYWORD_EMOJI[k.keyword] || "👍"} {k.keyword}
+                </span>
+                <span className="keyword-count">{k.count}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {showNegatives && (
+        <>
+          <p className="keyword-title negative">이런 점은 아쉬웠어요</p>
+          <p className="keyword-negatives">
+            {negatives.map((k) => `${k.keyword} ${k.count}`).join(" · ")}
+          </p>
+        </>
+      )}
+      {hiddenCount > 0 && (
+        <button className="keyword-more" onClick={() => setShowAll(!showAll)}>
+          {showAll ? "접기" : `+ ${hiddenCount}개 더보기`}
+        </button>
+      )}
+    </div>
+  );
+}
 
 function PlaceDetail() {
   const { id } = useParams();
@@ -97,9 +160,12 @@ function PlaceDetail() {
   const isLoggedIn = !!localStorage.getItem("token");
   const [reviewText, setReviewText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [placeData, setPlaceData] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const [showDescModal, setShowDescModal] = useState(false);
   const [expandedReview, setExpandedReview] = useState(null);
   const [showAllReviews, setShowAllReviews] = useState(false);
@@ -116,14 +182,15 @@ function PlaceDetail() {
 
   useEffect(() => {
     setLoading(true);
+    setLoadError(false);
     Promise.all([getPlaceDetail(id), getReviewsByPlace(id)])
       .then(([placeRes, reviewRes]) => {
         setPlaceData(placeRes.data);
         setReviews(reviewRes.data);
       })
-      .catch((err) => console.error(err))
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, retryKey]);
 
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
@@ -133,6 +200,7 @@ function PlaceDetail() {
     try {
       await createReview(id, content);
       setReviewText("");
+      setShowForm(false);
       const res = await getReviewsByPlace(id);
       setReviews(res.data);
     } catch {
@@ -171,6 +239,23 @@ function PlaceDetail() {
 
   if (loading) return <div className="loading-box">데이터 분석 중...</div>;
 
+  if (loadError || !placeData) {
+    return (
+      <div className="place-detail-page">
+        <Header />
+        <div className="load-error">
+          <p>장소 정보를 불러오지 못했어요.</p>
+          <p className="load-error-sub">잠시 후 다시 시도해주세요. 서버가 깨어나는 데 시간이 걸릴 수 있어요.</p>
+          <div className="load-error-buttons">
+            <button onClick={() => setRetryKey((k) => k + 1)}>다시 시도</button>
+            <button className="secondary" onClick={() => navigate(-1)}>뒤로 가기</button>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
 
   return (
     <div className="place-detail-page">
@@ -202,21 +287,33 @@ function PlaceDetail() {
 
         <section className="report-card">
           <div className="report-header">
-            <h3>💬 리뷰</h3>
-            <span style={{ fontSize: "0.9rem", color: "#aaa" }}>{reviews.length}개</span>
+            <h3>💬 리뷰 <span className="review-total">{reviews.length}</span></h3>
           </div>
+          <KeywordSummary keywords={placeData.review_keywords || []} />
           {isLoggedIn ? (
-            <form className="review-form" onSubmit={handleReviewSubmit}>
-              <textarea
-                placeholder="이곳에 다녀온 후기를 남겨주세요."
-                value={reviewText}
-                onChange={(e) => setReviewText(e.target.value)}
-                maxLength={1000}
-              />
-              <button type="submit" disabled={!reviewText.trim() || submitting}>
-                {submitting ? "등록 중..." : "등록"}
+            showForm ? (
+              <form className="review-form" onSubmit={handleReviewSubmit}>
+                <textarea
+                  placeholder="이곳에 다녀온 후기를 남겨주세요."
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
+                  maxLength={1000}
+                  autoFocus
+                />
+                <div className="review-form-buttons">
+                  <button type="button" className="secondary" onClick={() => setShowForm(false)}>
+                    취소
+                  </button>
+                  <button type="submit" disabled={!reviewText.trim() || submitting}>
+                    {submitting ? "등록 중..." : "등록"}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <button className="review-write-btn" onClick={() => setShowForm(true)}>
+                ✏️ 후기 쓰기
               </button>
-            </form>
+            )
           ) : (
             <button className="review-login" onClick={() => navigate("/login")}>
               로그인하고 후기 남기기 ›
@@ -233,22 +330,13 @@ function PlaceDetail() {
                     style={{ borderBottom: "1px solid #f0f0f0", paddingBottom: "12px", cursor: "pointer" }}
                   >
                     <div className="review-meta">
-                      <span className={`review-badge ${r.is_external ? "external" : "visitor"}`}>
-                        {r.is_external ? SOURCE_LABEL[r.source_type] || "외부 후기" : "방문자"}
-                      </span>
                       <span className="review-date">{r.created_at?.slice(0, 10)}</span>
-                      {r.is_external && r.url && (
-                        <a
-                          className="review-source-link"
-                          href={r.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          원문 보기 ›
-                        </a>
-                      )}
                     </div>
+                    {r.keywords?.length > 0 && (
+                      <div className="review-keywords">
+                        {r.keywords.map((k) => <span key={k}>#{k}</span>)}
+                      </div>
+                    )}
                     <p style={{
                       fontSize: "0.9rem", color: "#333", lineHeight: "1.6", margin: 0,
                       display: "-webkit-box", WebkitLineClamp: expandedReview === r.id ? "unset" : 2,
