@@ -5,7 +5,7 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "../pages_CSS/MyPlaces.css";
 
-const FALLBACK_IMG = "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?q=80&w=300";
+const FALLBACK_IMG = process.env.PUBLIC_URL + "/placeholder.svg";
 
 function timeAgo(value) {
   const date = new Date(value);

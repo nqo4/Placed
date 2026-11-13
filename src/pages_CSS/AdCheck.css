@@ -120,3 +120,24 @@
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* 모바일 */
+@media (max-width: 768px) {
+  .ad-check-container {
+    margin: 16px;
+    padding: 22px 16px;
+  }
+
+  .ad-check-container h2 {
+    font-size: 1.5rem;
+  }
+
+  .ad-input {
+    height: 160px;
+    font-size: 16px;
+  }
+
+  .analyze-btn {
+    width: 100%;
+  }
+}

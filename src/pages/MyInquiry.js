@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMyInquiries } from "../api/inquiryAPI";
+import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "../pages_CSS/MyInquiry.css";
 
@@ -25,17 +26,7 @@ function MyInquiry() {
   return (
     <div className="inquiry-page">
      
-      <header className="user-header">
-        <div className="logo" onClick={() => navigate("/main")}>
-          <img src="/placed_logo.png" alt="PLACED Logo" className="logo-img" />
-          <span className="logo-text">PLACED</span>
-        </div>
-
-        <nav className="nav">
-          <button onClick={() => navigate("/main")}>홈</button>
-          <button onClick={() => navigate("/contact")}>문의하기</button>
-        </nav>
-      </header>
+      <Header />
 
      
       <section className="inquiry-section">
