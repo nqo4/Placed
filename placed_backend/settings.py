@@ -236,6 +236,9 @@ NAVER_CLIENT_ID = env('NAVER_CLIENT_ID', '')
 NAVER_CLIENT_SECRET = env('NAVER_CLIENT_SECRET', '')
 NAVER_API_BASE_URL = env('NAVER_API_BASE_URL', 'https://naverapihub.apigw.ntruss.com/search/v1')
 
+# [Kakao(Daum) 검색 API 키] - api/kakao_images.py 에서 장소 사진을 찾을 때 사용 (카카오디벨로퍼스 REST API 키)
+KAKAO_REST_API_KEY = env('KAKAO_REST_API_KEY', '')
+
 # [SFR-004/SFR-008 관련: 검색 결과에서 광고로 판단해 제외할 기준선]
 # PlaceAnalysis.ad_probability(= 광고일 확률, 0~100) 값이 이 값 이상이면 검색 결과에서 제외합니다.
 AD_EXCLUDE_THRESHOLD = env('AD_EXCLUDE_THRESHOLD', '70', cast=int)

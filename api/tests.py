@@ -23,7 +23,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from . import naver_miner, recommendation
+from . import kakao_images, naver_miner, recommendation
 from .gemini_service import analyze_review
 from .keyword_taxonomy import MOOD_KEYWORDS, classify_place_type
 from .models import Inquiry, Place, PlaceAnalysis, PlaceImage, PlaceKeyword, PlaceViewLog, Review, ReviewSource, SearchLog
@@ -2056,22 +2056,25 @@ class PlaceImageFilterTests(TestCase):
         self.assertEqual(list(b.images.values_list('image_url', flat=True)), ['http://x/b.jpg'])
 
     @override_settings(NAVER_CLIENT_ID='id', NAVER_CLIENT_SECRET='secret')
+    @patch('api.management.commands.refresh_images.verified_review_images')
     @patch('api.management.commands.refresh_images.find_place_images')
-    def test_refresh_replaces_external_photos_and_keeps_uploads(self, mock_find):
+    def test_refresh_replaces_external_photos_and_keeps_uploads(self, mock_find, mock_verified):
         place = Place.objects.create(name='파이룸', address='대전 유성구')
         PlaceImage.objects.create(place=place, image_url='https://i.namu.wiki/a.jpg')
         uploaded = PlaceImage.objects.create(place=place, image='places/u.jpg')
-        mock_find.return_value = ['https://ldb-phinf.pstatic.net/new.jpg']
+        mock_verified.return_value = ['https://blog.example/review.jpg']
+        mock_find.return_value = ['https://ldb-phinf.pstatic.net/new.jpg', 'https://blog.example/review.jpg']
 
         call_command('refresh_images', interval=0, stdout=io.StringIO())
 
-        urls = set(place.images.values_list('image_url', flat=True))
-        self.assertEqual(urls, {None, 'https://ldb-phinf.pstatic.net/new.jpg'})
+        external = list(place.images.exclude(image_url=None).order_by('id').values_list('image_url', flat=True))
+        self.assertEqual(external, ['https://blog.example/review.jpg', 'https://ldb-phinf.pstatic.net/new.jpg'])
         self.assertTrue(PlaceImage.objects.filter(id=uploaded.id).exists())
 
     @override_settings(NAVER_CLIENT_ID='id', NAVER_CLIENT_SECRET='secret')
+    @patch('api.management.commands.refresh_images.verified_review_images', return_value=[])
     @patch('api.management.commands.refresh_images.find_place_images')
-    def test_refresh_stops_without_deleting_when_search_fails(self, mock_find):
+    def test_refresh_stops_without_deleting_when_search_fails(self, mock_find, mock_verified):
         place = Place.objects.create(name='파이룸', address='대전 유성구')
         PlaceImage.objects.create(place=place, image_url='http://x/old.jpg')
         mock_find.side_effect = naver_miner.ImageSearchError('파이룸')
@@ -2080,3 +2083,39 @@ class PlaceImageFilterTests(TestCase):
             call_command('refresh_images', interval=0, stdout=io.StringIO())
         self.assertTrue(place.images.filter(image_url='http://x/old.jpg').exists())
 
+
+
+@override_settings(KAKAO_REST_API_KEY='kakao-key', AD_EXCLUDE_THRESHOLD=70)
+class KakaoReviewImageTests(TestCase):
+    """카카오 이미지 검색 결과 중 이 장소의 광고 아닌 후기 글에 실린 사진만 쓰는지 확인."""
+
+    def setUp(self):
+        self.place = Place.objects.create(name='파이룸', address='대전 유성구')
+        ok = dict(place=self.place, is_review=True, has_place_info=True, analysis_failed=False)
+        ReviewSource.objects.create(url='https://blog.naver.com/good/111', ad_probability=10, **ok)
+        ReviewSource.objects.create(url='https://blog.naver.com/ad/222', ad_probability=95, **ok)
+
+    def test_review_post_key_matches_url_variants(self):
+        key = kakao_images.review_post_key
+        self.assertEqual(key('http://blog.naver.com/Good/111'), key('https://m.blog.naver.com/good/111'))
+        self.assertEqual(key('https://blog.naver.com/PostView.naver?blogId=good&logNo=111'), 'naver:good/111')
+
+    @patch('api.kakao_images.requests.get')
+    def test_keeps_only_large_photos_from_non_ad_reviews(self, mock_get):
+        doc = lambda img, url, w=800: {'image_url': img, 'doc_url': url, 'width': w, 'height': 600}
+        mock_get.return_value = _fake_response(200, {'documents': [
+            doc('http://img/other.jpg', 'http://blog.naver.com/someone/999'),
+            doc('http://img/ad.jpg', 'http://blog.naver.com/ad/222'),
+            doc('http://img/small.jpg', 'http://blog.naver.com/good/111', w=120),
+            doc('http://img/good.jpg', 'http://blog.naver.com/good/111'),
+        ]})
+        mock_get.return_value.raise_for_status = Mock()
+
+        self.assertEqual(kakao_images.verified_review_images(self.place, '파이룸 대전'), ['http://img/good.jpg'])
+        self.assertEqual(mock_get.call_args.kwargs['headers'], {'Authorization': 'KakaoAK kakao-key'})
+
+    @override_settings(KAKAO_REST_API_KEY='')
+    @patch('api.kakao_images.requests.get')
+    def test_no_key_means_no_request(self, mock_get):
+        self.assertEqual(kakao_images.verified_review_images(self.place, '파이룸 대전'), [])
+        mock_get.assert_not_called()

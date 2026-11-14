@@ -5,13 +5,23 @@ from django.db import transaction
 from django.db.models import Q
 
 from api.models import Place
-from api.naver_miner import ImageSearchError, _get_naver_headers, find_place_images, save_place_images
+from api.kakao_images import verified_review_images
+from api.naver_miner import (
+    ImageSearchError,
+    _get_naver_headers,
+    _image_queries,
+    find_place_images,
+    save_place_images,
+)
+
+MAX_IMAGES = 5
 
 
 class Command(BaseCommand):
     help = (
-        "기존 장소의 외부 사진을 다시 받습니다. 사진이 실린 글 제목에 상호명이 있는 사진만 남기고, "
-        "맞는 사진이 없으면 비워 둡니다. 사용자가 직접 올린 사진은 그대로 둡니다."
+        "기존 장소의 외부 사진을 다시 받습니다. 이 장소의 광고 아닌 후기 글에 실린 사진(카카오 이미지 검색)을 "
+        "먼저 쓰고, 나머지는 글 제목에 상호명이 있는 네이버 사진으로 채웁니다. 맞는 사진이 없으면 비워 두고, "
+        "사용자가 직접 올린 사진은 그대로 둡니다."
     )
 
     def add_arguments(self, parser):
@@ -34,14 +44,17 @@ class Command(BaseCommand):
         dry = options["dry_run"]
         found = empty = 0
         for place in places:
+            # 후기 글에서 확인된 사진은 이름이 같은 다른 가게 사진일 걱정이 없어 앞에 둡니다.
+            verified = verified_review_images(place, _image_queries(place.name, place.address)[0], MAX_IMAGES)
             try:
-                links = find_place_images(
-                    place.name, place.address, headers, interval=options["interval"], strict=True
+                naver = find_place_images(
+                    place.name, place.address, headers, max_count=MAX_IMAGES, interval=options["interval"], strict=True
                 )
             except ImageSearchError:
                 # 요청 실패를 "사진 없음"으로 보고 기존 사진을 지우면 안 되므로 여기서 멈춥니다.
                 raise CommandError(f"이미지 검색 실패로 중단했습니다. --start-id {place.id} 로 이어서 실행하세요.")
 
+            links = (verified + [link for link in naver if link not in verified])[:MAX_IMAGES]
             old = place.images.filter(Q(image="") | Q(image__isnull=True))
             if not dry:
                 with transaction.atomic():
@@ -51,7 +64,7 @@ class Command(BaseCommand):
                 saved = len(links)
             found += bool(saved)
             empty += not saved
-            self.stdout.write(f"[{place.id}] {place.name}: 사진 {saved}장")
+            self.stdout.write(f"[{place.id}] {place.name}: 사진 {saved}장 (후기 글 사진 {len(verified)}장)")
             time.sleep(options["interval"])
 
         verb = "확인" if dry else "갱신"
