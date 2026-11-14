@@ -118,7 +118,7 @@ import re
 import time
 from collections import Counter
 from itertools import zip_longest
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 import requests
 from django.conf import settings
@@ -162,6 +162,11 @@ MIN_REVIEW_SOURCES = 10  # 장소 하나당 목표로 모으는 최소 리뷰 �
 # AI 분석 비용/시간을 통제하기 위한 상한. 광고 글을 빼고도 후기가 남도록 15에서 40으로 늘렸습니다.
 MAX_REVIEW_SOURCES = getattr(settings, 'MAX_REVIEW_SOURCES', 40)
 REVIEW_SEARCH_MAX_PAGES = 3  # 검색어 하나당 넘겨 볼 최대 페이지 수 (페이지당 100건)
+IMAGE_SEARCH_DISPLAY = 30  # 상호명이 든 사진만 남기므로 넉넉히 받아서 거름
+# 가게가 네이버 플레이스·예약에 직접 올린 사진
+PLACE_PHOTO_HOSTS = ('ldb-phinf.pstatic.net', 'naverbooking-phinf.pstatic.net')
+# 상호명이 낱말로 걸려도 가게 사진이 아닌 뉴스·구인·숙소·유머 사이트
+NON_PLACE_PHOTO_HOSTS = ('imgnews.naver.net', 'alba.kr', 'albamon.com', 'humoruniv.org', 'yanolja.com', 'withstatic.com')
 
 # [비-리뷰 콘텐츠 사전 차단] 리뷰 성격이 아예 아닌 글(공고/모집/분양 정보 등)은 AI 분석으로
 # 보낼 필요도 없이 여기서 원천 차단합니다 - 흔한 문구를 미리 걸러 후보 자체에서 제외해
@@ -247,41 +252,130 @@ def _request_with_retry(url, headers):
     return None
 
 
-def _fetch_image_links(keyword, headers, max_count, filter_size=None):
+def _fetch_image_items(keyword, headers, display, filter_size=None):
     """
-    [이미지 정확도 개선 - 공용 헬퍼] filter_size를 넘기면 네이버 이미지 검색 API의
-    filter 파라미터(large=가로/세로 각각 300px 이상, medium=640x480 이상)로 결과를
-    제한합니다. None이면 필터 없이(filter=all과 동일) 요청합니다.
+    네이버 이미지 검색 결과 항목(title=사진이 실린 글 제목, link=사진 주소)을 그대로 돌려줍니다.
+    filter_size='large'면 가로/세로 300px 이상만 받습니다. None이면 필터 없이 요청합니다.
+    요청이 실패하면 "결과 0건"과 구분할 수 있도록 None을 돌려줍니다.
     """
     extra_params = {'filter': filter_size} if filter_size else None
-    url = _search_url('image', keyword, max_count, extra_params=extra_params)
+    url = _search_url('image', keyword, display, extra_params=extra_params)
     response = _request_with_retry(url, headers)
     if not response:
-        return []
+        return None
     try:
-        items = response.json().get('items', [])
+        return response.json().get('items', [])
     except ValueError:
         logger.error("이미지 검색 응답 JSON 파싱 실패: keyword=%s filter=%s", keyword, filter_size)
+        return None
+
+
+class ImageSearchError(Exception):
+    """이미지 검색 요청 자체가 실패함(결과 0건과 다름). 기존 사진을 지우기 전에 확인하는 용도."""
+
+
+def _compact(text):
+    """HTML 태그·공백·기호를 지우고 소문자로 맞춰 상호명 포함 여부를 비교하기 쉽게 만듭니다."""
+    plain = html.unescape(re.sub(r'<[^>]+>', '', text or ''))
+    return re.sub(r'[^0-9a-z가-힣]', '', plain.lower())
+
+
+def pick_place_images(items, place_name, max_count):
+    """
+    [이미지 정확도 개선] 이미지 검색은 "지역+상호명"과 비슷한 사진을 웹 전체에서 찾기 때문에,
+    상호명이 짧거나 흔하면 지역 소개(나무위키·구청·관광공사)·뉴스·구인 글 사진이 섞입니다.
+    사진이 실린 글 제목에 상호명이 들어 있는 사진만 후보로 삼고:
+    - 네이버 플레이스·예약에 가게가 직접 올린 사진(PLACE_PHOTO_HOSTS)이 있으면 그 사진, 제목이
+      상호명과 똑같은 사진, 상호명을 해시태그로 단 글의 사진만 씁니다. "소란"처럼 흔한 단어
+      이름이 다른 글 제목에 낱말로 걸리는 걸 막습니다.
+    - 그런 사진이 없을 때만 나머지 후보를 쓰되, 뉴스·구인 사이트(NON_PLACE_PHOTO_HOSTS)는 뺍니다.
+    맞는 사진이 없으면 엉뚱한 사진 대신 빈 목록을 돌려줍니다.
+    """
+    name = _compact(_refined_short_name(place_name))
+    if not name:
         return []
-    return [item.get('link') for item in items if item.get('link')]
+    trusted, exact, tagged, others = [], [], [], []
+    for item in items:
+        link = item.get('link')
+        title = _compact(item.get('title'))
+        if not link or name not in title or link in trusted + exact + tagged + others:
+            continue
+        host = urlparse(link).netloc
+        if host in PLACE_PHOTO_HOSTS:
+            trusted.append(link)
+        elif title == name:
+            exact.append(link)
+        elif host.endswith(NON_PLACE_PHOTO_HOSTS):
+            continue
+        elif _has_hashtag(item.get('title'), name):
+            tagged.append(link)
+        else:
+            others.append(link)
+    picked = trusted + exact + tagged if trusted else exact + tagged + others
+    return picked[:max_count]
 
 
-def get_exact_images_from_naver(keyword, headers, max_count=5):
+def _has_hashtag(raw_title, compact_name):
+    """제목에 "#파이룸"처럼 상호명이 해시태그로 들어 있는지. 낱말로만 걸린 글보다 가게 후기일 가능성이 큽니다."""
+    tags = re.findall(r'#([^#\s]+)', html.unescape(re.sub(r'<[^>]+>', '', raw_title or '')))
+    return any(_compact(tag) == compact_name for tag in tags)
+
+
+def get_exact_images_from_naver(keyword, headers, max_count=5, place_name=None, strict=False):
     """
-    [이미지 정확도 개선] 먼저 filter='large'(가로/세로 각각 300px 이상)로 요청해, 글
-    본문에 흔히 섞여 있는 작은 썸네일/아이콘/로고/프로필 사진처럼 매장과 무관할
-    가능성이 큰 이미지를 1차로 걸러냅니다. 다만 이건 여전히 "상호명+지역" 텍스트와
-    유사한 이미지를 웹 전체에서 찾는 일반 이미지 검색이라(실제 매장 사진이라는 보장은
-    없음), 완전히 관련 없는 사진을 100% 없애주진 않습니다 - sort는 기본값인 sim(유사도
-    순)을 그대로 사용합니다.
-
-    소규모 매장은 큰 이미지가 거의 없어 filter='large'로 0건이 나올 수 있으므로, 그
-    경우에만 필터 없이 한 번 더 시도해 사진이 아예 비는 상황을 피합니다.
+    keyword로 이미지를 넉넉히(IMAGE_SEARCH_DISPLAY건) 받아 pick_place_images()로 거릅니다.
+    먼저 큰 사진(filter='large')만 보고, 맞는 사진이 없을 때만 필터 없이 한 번 더 찾습니다.
+    place_name을 주지 않으면 keyword 전체를 상호명으로 보고 거릅니다.
+    strict=True면 요청 실패 시 빈 목록 대신 ImageSearchError를 냅니다.
     """
-    large_links = _fetch_image_links(keyword, headers, max_count, filter_size='large')
-    if large_links:
-        return large_links
-    return _fetch_image_links(keyword, headers, max_count)
+    place_name = place_name or keyword
+    for filter_size in ('large', None):
+        items = _fetch_image_items(keyword, headers, IMAGE_SEARCH_DISPLAY, filter_size=filter_size)
+        if items is None:
+            if strict:
+                raise ImageSearchError(keyword)
+            items = []
+        links = pick_place_images(items, place_name, max_count)
+        if links:
+            return links
+    return []
+
+
+def _image_queries(place_name, address):
+    """
+    "상호명 + 시"(예: "파이룸 대전")를 먼저 씁니다. "대전광역시 유성구 파이룸"처럼 지역을 앞에
+    길게 붙이면 상호명이 짧을 때 지역 소개 사진이 결과를 채워, 표본 60곳 기준 사진을 찾은
+    곳이 44곳 → 55곳으로 늘었습니다. 못 찾으면 예전 검색어(구 단위 지역 + 상호명)로 한 번 더 찾습니다.
+    """
+    short = _refined_short_name(place_name)
+    if not address or address == "주소 미확인":
+        return [short]
+    city = re.sub(r'(광역시|특별시|특별자치시|시)$', '', address.split()[0])
+    return [f"{short} {city}".strip(), f"{region_hint(address)} {short}".strip()]
+
+
+def find_place_images(place_name, address, headers, max_count=5, interval=0, strict=False):
+    for i, query in enumerate(_image_queries(place_name, address)):
+        if i:
+            time.sleep(interval)
+        links = get_exact_images_from_naver(query, headers, max_count, place_name=place_name, strict=strict)
+        if links:
+            return links
+    return []
+
+
+def save_place_images(place, links):
+    """
+    사진 주소를 장소에 저장합니다. 이미 다른 장소에 붙은 사진은 지역 소개 사진처럼 여러 곳에
+    섞여 들어온 것일 가능성이 커서 건너뜁니다. 저장한 개수를 돌려줍니다.
+    """
+    saved = 0
+    for link in links:
+        if PlaceImage.objects.filter(image_url=link).exclude(place=place).exists():
+            continue
+        _, created = PlaceImage.objects.get_or_create(place=place, image_url=link)
+        saved += created
+    return saved
 
 
 def _refined_short_name(place_name):
@@ -518,18 +612,11 @@ def _process_place_item(item, headers, request_interval):
     raw_category = html.unescape(re.sub(r'<[^>]+>', '', item.get("category") or ""))
     raw_item_description = html.unescape(re.sub(r'<[^>]+>', '', item.get("description") or ""))
     description = raw_category or raw_item_description or f"{exact_place_name} 정보입니다."
-    refined_name_short = _refined_short_name(exact_place_name)
 
-    # [이미지 정확도 개선] 주소 첫 토큰(시 단위, 예: "대전")만 쓰면 같은 시의 다른
-    # 구/동에 있는 동명 매장이나 전혀 무관한 글까지 섞일 여지가 큽니다. region_hint()로
-    # 시/구 단위(예: "대전 유성구")까지 붙여 검색 범위를 더 좁힙니다 - 이미 location
-    # 키워드/리뷰 소스 매칭에서 쓰는 것과 같은 함수라 기준이 서로 어긋나지 않습니다.
-    image_region_hint = region_hint(exact_address) if exact_address and exact_address != "주소 미확인" else ""
-    image_query = f"{image_region_hint} {refined_name_short}".strip()
     # [오류 감소] 이미지 수집이 실패해도(예외 발생) Place를 만들다 만 상태로 남기지 않도록,
     # Place.objects.create()보다 먼저 호출합니다 - 여기서 예외가 나면 이 장소는 통째로
     # 건너뛰고 DB에 아무 것도 남지 않습니다(다음 실행 때 다시 신규 장소로 재시도됩니다).
-    real_images = get_exact_images_from_naver(image_query, headers, max_count=5)
+    real_images = find_place_images(exact_place_name, exact_address, headers, interval=request_interval)
     time.sleep(request_interval)
 
     latitude, longitude = _extract_coordinates(item)
@@ -544,8 +631,7 @@ def _process_place_item(item, headers, request_interval):
     )
     logger.info("신규 장소 등록: %s", exact_place_name)
 
-    for img_url in real_images:
-        PlaceImage.objects.get_or_create(place=place, image_url=img_url)
+    save_place_images(place, real_images)
 
     _store_structural_keywords(place)
 

@@ -12,10 +12,12 @@ import os
 import shutil
 import tempfile
 from unittest.mock import Mock, patch
+from urllib.parse import quote
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from rest_framework import status
@@ -630,7 +632,12 @@ class NaverPlaceDiscoveryTests(TestCase):
     @patch('api.naver_miner.get_exact_images_from_naver')
     @patch('api.naver_miner.requests.get')
     def test_one_place_error_does_not_abort_the_batch(self, mock_get, mock_get_images):
-        mock_get_images.side_effect = [Exception("이미지 API 오류"), []]
+        def images(query, headers, max_count=5, place_name=None, strict=False):
+            if place_name == "문제카페":
+                raise Exception("이미지 API 오류")
+            return []
+
+        mock_get_images.side_effect = images
         mock_get.return_value = self._local_response([
             {"title": "문제카페", "roadAddress": "대전 동구"},
             {"title": "정상카페", "roadAddress": "대전 동구"},
@@ -1991,3 +1998,85 @@ class FrontendCompatibilityTests(APITestCase):
         res = self.client.get(reverse('place-detail', args=[self.place.id]))
         self.assertEqual(res.data['non_ad_probability'], 80)
         self.assertEqual(res.data['ai_filtering_reason'], '실제 후기')
+
+
+class PlaceImageFilterTests(TestCase):
+    """이미지 검색 결과 중 글 제목에 상호명이 있는 사진만 남기고, 기존 사진을 안전하게 다시 받는지 확인."""
+
+    def setUp(self):
+        patcher = patch('api.naver_miner.time.sleep', return_value=None)
+        self.addCleanup(patcher.stop)
+        patcher.start()
+
+    def test_pick_prefers_place_photos_and_drops_word_matches(self):
+        items = [
+            {'title': '중구(대전광역시) - 나무위키', 'link': 'https://i.namu.wiki/a.jpg'},
+            {'title': '투표소 <b>소란</b> 언동 고발', 'link': 'http://imgnews.naver.net/n.jpg'},
+            {'title': '#오늘클립 #소란 #lp바', 'link': 'https://pup-post-phinf.pstatic.net/c.jpg'},
+            {'title': '소란', 'link': 'https://ldb-phinf.pstatic.net/1.jpg'},
+            {'title': '소 란', 'link': 'https://cdn.example/exact.jpg'},
+            {'title': '소란', 'link': 'https://ldb-phinf.pstatic.net/1.jpg'},
+        ]
+        items.append({'title': '대전 전시에서 한바탕 소란이 있었어요', 'link': 'https://blog.example/word.jpg'})
+        # 가게가 직접 올린 사진이 있으면 그 사진 + 제목이 상호명과 같은 사진 + 해시태그 글 사진만
+        self.assertEqual(
+            naver_miner.pick_place_images(items, '소란', 5),
+            ['https://ldb-phinf.pstatic.net/1.jpg', 'https://cdn.example/exact.jpg',
+             'https://pup-post-phinf.pstatic.net/c.jpg'],
+        )
+        # 없으면 제목에 상호명이 든 사진을 쓰되 뉴스 사진은 뺌
+        self.assertEqual(
+            naver_miner.pick_place_images(items[:3], '소란', 5),
+            ['https://pup-post-phinf.pstatic.net/c.jpg'],
+        )
+        self.assertEqual(naver_miner.pick_place_images(items[:1], '소란', 5), [])
+
+    @patch('api.naver_miner.requests.get')
+    def test_falls_back_to_unfiltered_search_and_strict_raises_on_failure(self, mock_get):
+        def side_effect(url, headers=None, timeout=None):
+            if 'filter=large' in url:
+                return _fake_response(200, {'items': [{'title': '대전 서구', 'link': 'http://x/region.jpg'}]})
+            return _fake_response(200, {'items': [{'title': '지니네', 'link': 'http://x/g.jpg'}]})
+
+        mock_get.side_effect = side_effect
+        self.assertEqual(naver_miner.find_place_images('지니네', '대전광역시 서구 1', {}), ['http://x/g.jpg'])
+        self.assertIn(quote('지니네 대전'), mock_get.call_args_list[0].args[0])
+
+        mock_get.side_effect = None
+        mock_get.return_value = _fake_response(500, {})
+        self.assertEqual(naver_miner.find_place_images('지니네', '대전광역시 서구 1', {}), [])
+        with self.assertRaises(naver_miner.ImageSearchError):
+            naver_miner.find_place_images('지니네', '대전광역시 서구 1', {}, strict=True)
+
+    def test_save_skips_photo_already_used_by_another_place(self):
+        a = Place.objects.create(name='가게A', address='대전 유성구')
+        b = Place.objects.create(name='가게B', address='대전 유성구')
+        PlaceImage.objects.create(place=a, image_url='http://x/shared.jpg')
+        self.assertEqual(naver_miner.save_place_images(b, ['http://x/shared.jpg', 'http://x/b.jpg']), 1)
+        self.assertEqual(list(b.images.values_list('image_url', flat=True)), ['http://x/b.jpg'])
+
+    @override_settings(NAVER_CLIENT_ID='id', NAVER_CLIENT_SECRET='secret')
+    @patch('api.management.commands.refresh_images.find_place_images')
+    def test_refresh_replaces_external_photos_and_keeps_uploads(self, mock_find):
+        place = Place.objects.create(name='파이룸', address='대전 유성구')
+        PlaceImage.objects.create(place=place, image_url='https://i.namu.wiki/a.jpg')
+        uploaded = PlaceImage.objects.create(place=place, image='places/u.jpg')
+        mock_find.return_value = ['https://ldb-phinf.pstatic.net/new.jpg']
+
+        call_command('refresh_images', interval=0, stdout=io.StringIO())
+
+        urls = set(place.images.values_list('image_url', flat=True))
+        self.assertEqual(urls, {None, 'https://ldb-phinf.pstatic.net/new.jpg'})
+        self.assertTrue(PlaceImage.objects.filter(id=uploaded.id).exists())
+
+    @override_settings(NAVER_CLIENT_ID='id', NAVER_CLIENT_SECRET='secret')
+    @patch('api.management.commands.refresh_images.find_place_images')
+    def test_refresh_stops_without_deleting_when_search_fails(self, mock_find):
+        place = Place.objects.create(name='파이룸', address='대전 유성구')
+        PlaceImage.objects.create(place=place, image_url='http://x/old.jpg')
+        mock_find.side_effect = naver_miner.ImageSearchError('파이룸')
+
+        with self.assertRaises(CommandError):
+            call_command('refresh_images', interval=0, stdout=io.StringIO())
+        self.assertTrue(place.images.filter(image_url='http://x/old.jpg').exists())
+
