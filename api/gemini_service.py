@@ -287,3 +287,50 @@ def generate_response(query):
     except Exception as e:
         print(f"Gemini Search Error: {e}")
         return "죄송합니다. 현재 AI 응답을 생성할 수 없습니다."
+
+PHOTO_LABELS = ('food', 'interior', 'exterior', 'menu', 'people', 'other')
+
+
+def classify_place_photos(place_name, category, images):
+    """
+    [대표 사진 고르기] 장소 사진 여러 장을 한 번의 요청으로 보내 장마다 종류를 붙입니다.
+    images: [(mime_type, bytes), ...]
+    반환값: images와 같은 길이의 라벨 리스트(PHOTO_LABELS 중 하나). 실패하면 None을 돌려주고,
+    호출부는 원래 순서를 그대로 씁니다(사진을 잃지 않도록).
+    """
+    if not images:
+        return []
+    try:
+        api_key = getattr(settings, 'GEMINI_API_KEY', '')
+        if not api_key:
+            return None
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(getattr(settings, 'GEMINI_MODEL_NAME', 'gemini-1.5-flash'))
+
+        prompt = f"""
+        아래 사진 {len(images)}장은 "{place_name}"({category}) 가게의 사진으로 수집된 것입니다.
+        사진마다 아래 라벨 중 하나를 붙이세요.
+
+        - food: 이 가게에서 파는 음식·음료·디저트가 주인공인 사진
+        - interior: 매장 내부(좌석, 진열대, 인테리어)
+        - exterior: 가게 외관, 입구, 간판
+        - menu: 메뉴판, 가격표
+        - people: 사람이 주인공인 사진(셀카, 인물)
+        - other: 지도·캡처·스티커·이모티콘·글자만 있는 이미지, 또는 이 업종 가게와 관계없어 보이는 사진(집·숙소 방, 꽃다발, 풍경 등)
+
+        [출력 형식] 사진 순서대로, 잡담이나 마크다운 없이 JSON만 출력하세요.
+        {{"labels": ["food", "..."]}}
+        """
+        parts = [prompt] + [{'mime_type': mime, 'data': data} for mime, data in images]
+        response = model.generate_content(parts)
+
+        result_text = response.text.replace('```json', '').replace('```', '').strip()
+        json_match = re.search(r'\{.*\}', result_text, re.DOTALL)
+        labels = json.loads(json_match.group() if json_match else result_text).get('labels', [])
+        if not isinstance(labels, list) or len(labels) != len(images):
+            return None
+        return [label if label in PHOTO_LABELS else 'other' for label in (str(l).strip().lower() for l in labels)]
+
+    except Exception as e:
+        print(f"Gemini Error (사진 분류): {e}")
+        return None

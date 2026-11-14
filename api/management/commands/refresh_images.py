@@ -6,6 +6,7 @@ from django.db.models import Q
 
 from api.models import Place
 from api.kakao_images import verified_review_images
+from api.photo_ranking import rank_place_photos
 from api.naver_miner import (
     ImageSearchError,
     _get_naver_headers,
@@ -15,13 +16,15 @@ from api.naver_miner import (
 )
 
 MAX_IMAGES = 5
+MAX_CANDIDATES = 8  # 대표 사진을 고를 후보 수. 관계없는 사진을 빼도 5장이 남도록 넉넉히 받음
 
 
 class Command(BaseCommand):
     help = (
         "기존 장소의 외부 사진을 다시 받습니다. 이 장소의 광고 아닌 후기 글에 실린 사진(카카오 이미지 검색)을 "
         "먼저 쓰고, 나머지는 글 제목에 상호명이 있는 네이버 사진으로 채웁니다. 맞는 사진이 없으면 비워 두고, "
-        "사용자가 직접 올린 사진은 그대로 둡니다."
+        "사용자가 직접 올린 사진은 그대로 둡니다. Gemini로 사진 종류를 나눠 음식·매장 사진을 앞에 두고 "
+        "관계없는 사진은 뺍니다(--no-ai로 끌 수 있음)."
     )
 
     def add_arguments(self, parser):
@@ -29,6 +32,7 @@ class Command(BaseCommand):
         parser.add_argument("--limit", type=int, default=None, help="처리할 최대 장소 수")
         parser.add_argument("--start-id", type=int, default=None, help="이 id부터 처리 (중단된 곳부터 이어서)")
         parser.add_argument("--interval", type=float, default=0.2, help="요청 간 대기 시간(초)")
+        parser.add_argument("--no-ai", action="store_true", help="Gemini 대표 사진 고르기 없이 검색 순서대로 저장")
 
     def handle(self, *args, **options):
         headers = _get_naver_headers()
@@ -45,16 +49,17 @@ class Command(BaseCommand):
         found = empty = 0
         for place in places:
             # 후기 글에서 확인된 사진은 이름이 같은 다른 가게 사진일 걱정이 없어 앞에 둡니다.
-            verified = verified_review_images(place, _image_queries(place.name, place.address)[0], MAX_IMAGES)
+            verified = verified_review_images(place, _image_queries(place.name, place.address)[0], MAX_CANDIDATES)
             try:
                 naver = find_place_images(
-                    place.name, place.address, headers, max_count=MAX_IMAGES, interval=options["interval"], strict=True
+                    place.name, place.address, headers, max_count=MAX_CANDIDATES, interval=options["interval"], strict=True
                 )
             except ImageSearchError:
                 # 요청 실패를 "사진 없음"으로 보고 기존 사진을 지우면 안 되므로 여기서 멈춥니다.
                 raise CommandError(f"이미지 검색 실패로 중단했습니다. --start-id {place.id} 로 이어서 실행하세요.")
 
-            links = (verified + [link for link in naver if link not in verified])[:MAX_IMAGES]
+            links = (verified + [link for link in naver if link not in verified])[:MAX_CANDIDATES]
+            links = links[:MAX_IMAGES] if options["no_ai"] else rank_place_photos(place, links, MAX_IMAGES)
             old = place.images.filter(Q(image="") | Q(image__isnull=True))
             if not dry:
                 with transaction.atomic():

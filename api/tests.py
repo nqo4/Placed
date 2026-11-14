@@ -23,7 +23,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from . import kakao_images, naver_miner, recommendation
+from . import kakao_images, naver_miner, photo_ranking, recommendation
 from .gemini_service import analyze_review
 from .keyword_taxonomy import MOOD_KEYWORDS, classify_place_type
 from .models import Inquiry, Place, PlaceAnalysis, PlaceImage, PlaceKeyword, PlaceViewLog, Review, ReviewSource, SearchLog
@@ -2056,9 +2056,10 @@ class PlaceImageFilterTests(TestCase):
         self.assertEqual(list(b.images.values_list('image_url', flat=True)), ['http://x/b.jpg'])
 
     @override_settings(NAVER_CLIENT_ID='id', NAVER_CLIENT_SECRET='secret')
+    @patch('api.management.commands.refresh_images.rank_place_photos', side_effect=lambda place, links, n: links[:n])
     @patch('api.management.commands.refresh_images.verified_review_images')
     @patch('api.management.commands.refresh_images.find_place_images')
-    def test_refresh_replaces_external_photos_and_keeps_uploads(self, mock_find, mock_verified):
+    def test_refresh_replaces_external_photos_and_keeps_uploads(self, mock_find, mock_verified, mock_rank):
         place = Place.objects.create(name='파이룸', address='대전 유성구')
         PlaceImage.objects.create(place=place, image_url='https://i.namu.wiki/a.jpg')
         uploaded = PlaceImage.objects.create(place=place, image='places/u.jpg')
@@ -2119,3 +2120,38 @@ class KakaoReviewImageTests(TestCase):
     def test_no_key_means_no_request(self, mock_get):
         self.assertEqual(kakao_images.verified_review_images(self.place, '파이룸 대전'), [])
         mock_get.assert_not_called()
+
+
+class PhotoRankingTests(TestCase):
+    """Gemini 사진 분류로 대표 사진 순서를 정하고, 실패해도 사진을 잃지 않는지 확인."""
+
+    def setUp(self):
+        self.place = Place.objects.create(name='오트번', address='대전 유성구', category='카페')
+        self.links = ['http://x/sticker.jpg', 'http://x/menu.jpg', 'http://x/outside.jpg',
+                      'http://x/cake.jpg', 'http://x/dead.jpg']
+
+    def _download(self, url):
+        return None if 'dead' in url else b'jpeg'
+
+    @patch('api.photo_ranking.classify_place_photos', return_value=['other', 'menu', 'exterior', 'food'])
+    def test_food_first_other_dropped_unchecked_last(self, mock_classify):
+        with patch('api.photo_ranking._download', side_effect=self._download):
+            ranked = photo_ranking.rank_place_photos(self.place, self.links, 5)
+        self.assertEqual(ranked, ['http://x/cake.jpg', 'http://x/outside.jpg', 'http://x/menu.jpg', 'http://x/dead.jpg'])
+        self.assertEqual(len(mock_classify.call_args.args[2]), 4)  # 받은 사진만 보냄
+
+    @patch('api.photo_ranking.classify_place_photos', return_value=None)
+    def test_gemini_failure_keeps_original_order(self, mock_classify):
+        with patch('api.photo_ranking._download', side_effect=self._download):
+            self.assertEqual(photo_ranking.rank_place_photos(self.place, self.links, 3), self.links[:3])
+
+    @override_settings(GEMINI_API_KEY='key')
+    @patch('api.gemini_service.genai')
+    def test_classify_rejects_wrong_length_and_unknown_labels(self, mock_genai):
+        from .gemini_service import classify_place_photos
+        model = mock_genai.GenerativeModel.return_value
+        model.generate_content.return_value = Mock(text='```json {"labels": ["FOOD", "selfie"]} ```')
+        self.assertEqual(classify_place_photos('오트번', '카페', [('image/jpeg', b'a'), ('image/jpeg', b'b')]),
+                         ['food', 'other'])
+        model.generate_content.return_value = Mock(text='{"labels": ["food"]}')
+        self.assertIsNone(classify_place_photos('오트번', '카페', [('image/jpeg', b'a'), ('image/jpeg', b'b')]))
