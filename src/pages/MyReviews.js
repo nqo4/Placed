@@ -49,6 +49,7 @@ function MyReviews() {
             <div className="review-header">
               <h4 className="review-place" onClick={() => navigate(`/place/${r.place}`)}>
                 {r.place_name} ›
+                {r.is_hidden && <span className="review-private">비공개 (광고 의심)</span>}
               </h4>
               <button className="delete-btn" onClick={() => handleDelete(r.id)}>삭제</button>
             </div>

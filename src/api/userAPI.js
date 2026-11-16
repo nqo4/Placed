@@ -23,3 +23,5 @@ export const updateName = (name) => API.patch(API_ROUTES.PROFILE, { first_name: 
 
 export const changePassword = (currentPassword, newPassword) =>
   API.post(API_ROUTES.CHANGE_PASSWORD, { current_password: currentPassword, new_password: newPassword });
+
+export const deleteAccount = (password) => API.post(API_ROUTES.DELETE_ACCOUNT, { password });

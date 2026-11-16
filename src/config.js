@@ -12,6 +12,7 @@ export const API_ROUTES = {
   CHECK_ID: "/api/users/check-id/",
   PROFILE: "/api/users/me/",
   CHANGE_PASSWORD: "/api/users/change-password/",
+  DELETE_ACCOUNT: "/api/users/delete-account/",
 
 
   CREATE_INQUIRY: "/api/inquiries/create/",

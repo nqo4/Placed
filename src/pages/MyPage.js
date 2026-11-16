@@ -4,7 +4,17 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "../pages_CSS/MyPage.css";
 import { clearAuth } from "../api/axiosInstance";
-import { getProfile, updateName, changePassword } from "../api/userAPI";
+import { getProfile, updateName, changePassword, deleteAccount } from "../api/userAPI";
+
+// 받침 있으면 첫 번째, 없으면 두 번째 조사
+const josa = (word, withFinal, withoutFinal) => {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  return word + (code >= 0 && code % 28 !== 0 ? withFinal : withoutFinal);
+};
+
+// ["이름", "비밀번호"] → "이름과 비밀번호"
+const joinItems = (items) =>
+  items.length > 1 ? `${josa(items[0], "과", "와")} ${items.slice(1).join(", ")}` : items[0];
 
 function MyPage() {
   const navigate = useNavigate();
@@ -15,6 +25,10 @@ function MyPage() {
   const [userInfo, setUserInfo] = useState({ name: savedUser.first_name || "", ...emptyPasswords });
   const [message, setMessage] = useState({ text: "", type: "" });
   const [saving, setSaving] = useState(false);
+  const [showWithdraw, setShowWithdraw] = useState(false);
+  const [withdrawPassword, setWithdrawPassword] = useState("");
+  const [withdrawError, setWithdrawError] = useState("");
+  const [withdrawing, setWithdrawing] = useState(false);
 
   // 서버에서 최신 내 정보 불러오기
   useEffect(() => {
@@ -35,6 +49,25 @@ function MyPage() {
   const handleLogout = () => {
     clearAuth();
     navigate("/");
+  };
+
+  const handleWithdraw = async () => {
+    if (!withdrawPassword) {
+      setWithdrawError("비밀번호를 입력해주세요.");
+      return;
+    }
+    if (!window.confirm("정말 탈퇴하시겠어요? 되돌릴 수 없어요.")) return;
+    setWithdrawing(true);
+    try {
+      await deleteAccount(withdrawPassword);
+      clearAuth();
+      alert("탈퇴가 완료되었습니다.");
+      navigate("/");
+    } catch (err) {
+      setWithdrawError(err.response?.data?.message || "탈퇴에 실패했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setWithdrawing(false);
+    }
   };
 
   const handleCancel = () => {
@@ -89,9 +122,9 @@ function MyPage() {
         done.push("비밀번호");
       }
       setUserInfo((prev) => ({ ...prev, ...emptyPasswords }));
-      setMessage({ text: `${done.join("와 ")}를 변경했어요.`, type: "success" });
+      setMessage({ text: `${josa(joinItems(done), "을", "를")} 변경했어요.`, type: "success" });
     } catch (err) {
-      const prefix = done.length ? `${done.join("와 ")}는 변경했지만, ` : "";
+      const prefix = done.length ? `${josa(joinItems(done), "은", "는")} 변경했지만, ` : "";
       setMessage({ text: prefix + errorText(err, "저장에 실패했어요. 잠시 후 다시 시도해주세요."), type: "error" });
     } finally {
       setSaving(false);
@@ -192,6 +225,41 @@ function MyPage() {
               </button>
             </div>
           </form>
+
+          <div className="withdraw-area">
+            {!showWithdraw ? (
+              <button type="button" className="withdraw-link" onClick={() => setShowWithdraw(true)}>
+                회원 탈퇴
+              </button>
+            ) : (
+              <div className="withdraw-box">
+                <p className="withdraw-title">회원 탈퇴</p>
+                <p className="withdraw-desc">
+                  탈퇴하면 계정, 작성한 후기, 최근 본 기록이 모두 삭제되고 되돌릴 수 없어요.
+                </p>
+                <input
+                  type="password"
+                  placeholder="비밀번호 확인"
+                  value={withdrawPassword}
+                  onChange={(e) => { setWithdrawPassword(e.target.value); setWithdrawError(""); }}
+                  autoComplete="current-password"
+                />
+                {withdrawError && <p className="form-message error">{withdrawError}</p>}
+                <div className="withdraw-buttons">
+                  <button
+                    type="button"
+                    className="cancel-btn"
+                    onClick={() => { setShowWithdraw(false); setWithdrawPassword(""); setWithdrawError(""); }}
+                  >
+                    취소
+                  </button>
+                  <button type="button" className="withdraw-btn" onClick={handleWithdraw} disabled={withdrawing}>
+                    {withdrawing ? "처리 중..." : "탈퇴하기"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </main>
         <button className="mobile-logout" onClick={handleLogout}>로그아웃</button>
       </div>

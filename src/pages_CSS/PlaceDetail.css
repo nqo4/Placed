@@ -274,6 +274,24 @@
   cursor: default;
 }
 
+.review-notice {
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.review-notice.ok {
+  background: #e8f7ee;
+  color: #1f9d55;
+}
+
+.review-notice.hidden {
+  background: #fff8e6;
+  color: #9a6700;
+}
+
 .review-write-btn {
   width: 100%;
   padding: 11px;
