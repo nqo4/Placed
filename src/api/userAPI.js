@@ -16,3 +16,10 @@ export const signupUser = (id, password, name = "") =>
 
 export const checkDuplicateId = (id) =>
   publicAPI.get(`${API_ROUTES.CHECK_ID}?id=${id}`);
+
+export const getProfile = () => API.get(API_ROUTES.PROFILE);
+
+export const updateName = (name) => API.patch(API_ROUTES.PROFILE, { first_name: name });
+
+export const changePassword = (currentPassword, newPassword) =>
+  API.post(API_ROUTES.CHANGE_PASSWORD, { current_password: currentPassword, new_password: newPassword });

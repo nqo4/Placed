@@ -31,7 +31,7 @@ function AdCheck() {
     };
 
     return (
-        <div className="ad-check-page">
+        <div className="check-page">
             <header className="user-header">
                 <div className="logo" onClick={() => navigate("/main")}>
                     <img src="/placed_logo.png" alt="PLACED Logo" className="logo-img" />
@@ -44,12 +44,12 @@ function AdCheck() {
                 </nav>
             </header>
 
-            <div className="ad-check-container">
+            <div className="check-container">
                 <h2>광고 판독기 🕵️‍♂️</h2>
                 <p>의심스러운 리뷰 텍스트를 붙여넣으세요. AI가 광고 여부를 분석해줍니다.</p>
 
                 <textarea
-                    className="ad-input"
+                    className="check-input"
                     placeholder="여기에 리뷰 내용을 입력하세요..."
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
@@ -60,14 +60,14 @@ function AdCheck() {
                 </button>
 
                 {result && (
-                    <div className={`result-box ${result.is_ad ? "ad" : "organic"}`}>
+                    <div className={`result-box ${result.is_ad ? "suspect" : "organic"}`}>
                         <h3>분석 결과</h3>
                         <p className="probability">
                             광고 확률: <strong>{result.probability}%</strong>
                         </p>
                         <p className="summary">{result.reason}</p>
                         {result.is_ad ? (
-                            <div className="badge ad-badge">🚨 광고 의심</div>
+                            <div className="badge warn-badge">🚨 광고 의심</div>
                         ) : (
                             <div className="badge organic-badge">✅ 실제 후기</div>
                         )}

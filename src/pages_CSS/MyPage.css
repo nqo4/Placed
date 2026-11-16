@@ -171,6 +171,33 @@ input[readOnly] {
   background-color: #1b63e0;
 }
 
+.form-message {
+  margin: 4px 0 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+
+.form-message.success {
+  background: #e8f7ee;
+  color: #1f9d55;
+}
+
+.form-message.error {
+  background: #fff1f0;
+  color: #dc3545;
+}
+
+.form-message.info {
+  background: #f1f5f9;
+  color: #555;
+}
+
+.save-btn:disabled {
+  background: #b9d3ff;
+  cursor: default;
+}
+
 .mobile-logout {
   display: none;
 }

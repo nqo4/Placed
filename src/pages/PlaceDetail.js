@@ -270,7 +270,7 @@ function PlaceDetail() {
                 📍 길찾기
               </button>
             </div>
-            <p className="addr">주소 : {placeData.address}</p>
+            <p className="place-location">주소 : {placeData.address}</p>
             {placeData.latitude != null && placeData.longitude != null && (
               <PlaceMap name={placeData.name} lat={placeData.latitude} lng={placeData.longitude} />
             )}
