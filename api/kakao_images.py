@@ -19,6 +19,33 @@ MIN_IMAGE_SIDE = 300  # 지도 캡처·아이콘 같은 작은 사진 제외
 REQUEST_TIMEOUT = 6
 
 
+KAKAO_REGION_URL = 'https://dapi.kakao.com/v2/local/geo/coord2regioncode.json'
+
+
+def dong_names(latitude, longitude):
+    """
+    좌표가 속한 법정동·행정동 이름(예: ['봉명동', '온천2동']). 주소가 도로명이라 동 이름이 없어서
+    "~동" 검색이 안 되던 문제를 위치 키워드로 메웁니다. 키·좌표가 없거나 요청이 실패하면 None.
+    """
+    api_key = getattr(settings, 'KAKAO_REST_API_KEY', '')
+    if not api_key or latitude is None or longitude is None:
+        return None
+    try:
+        response = requests.get(
+            KAKAO_REGION_URL,
+            params={'x': longitude, 'y': latitude},
+            headers={'Authorization': f'KakaoAK {api_key}'},
+            timeout=REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+        documents = response.json().get('documents', [])
+    except (requests.RequestException, ValueError) as exc:
+        logger.warning("카카오 좌표→동 변환 실패: %s,%s - %s", latitude, longitude, exc)
+        return None
+    names = [doc.get('region_3depth_name') for doc in documents]
+    return list(dict.fromkeys(name for name in names if name))
+
+
 def review_post_key(url):
     """같은 글을 가리키는 주소를 하나로 맞춥니다(네이버 블로그는 http/https·모바일·PostView 형식이 섞여 옴)."""
     url = url or ''

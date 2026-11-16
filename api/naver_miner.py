@@ -128,6 +128,7 @@ from django.db.models import Count, Q
 from .gemini_service import analyze_review, extract_mood_keywords
 from .keyword_taxonomy import MAX_MOOD_KEYWORDS_PER_PLACE, MOOD_KEYWORDS
 from .models import Place, PlaceAnalysis, PlaceImage, PlaceKeyword, Review, ReviewSource
+from .kakao_images import dong_names
 from .recommendation import category_tokens, neighborhood_hint, region_hint
 
 logger = logging.getLogger('api.naver_miner')
@@ -661,6 +662,13 @@ def _store_structural_keywords(place):
     neighborhood = neighborhood_hint(place.address)
     if neighborhood:
         keywords.append(('location', neighborhood))
+
+    # 도로명 주소에는 동 이름이 없어 좌표로 동 이름을 받습니다. 요청이 실패하면 이전에 받아 둔 동 이름을 유지합니다.
+    dongs = dong_names(place.latitude, place.longitude)
+    if dongs is None:
+        dongs = list(place.keywords.filter(keyword_type='location').exclude(
+            keyword__in=[region, neighborhood]).values_list('keyword', flat=True))  # 아래 delete 전에 읽어야 함
+    keywords.extend(('location', dong) for dong in dongs)
 
     for token in category_tokens(place.category):
         keywords.append(('category', token))

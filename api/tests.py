@@ -23,6 +23,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+import requests
 from . import kakao_images, naver_miner, photo_ranking, recommendation
 from .gemini_service import analyze_review
 from .keyword_taxonomy import MOOD_KEYWORDS, classify_place_type
@@ -2120,6 +2121,30 @@ class KakaoReviewImageTests(TestCase):
     def test_no_key_means_no_request(self, mock_get):
         self.assertEqual(kakao_images.verified_review_images(self.place, '파이룸 대전'), [])
         mock_get.assert_not_called()
+
+
+@override_settings(KAKAO_REST_API_KEY='kakao-key')
+class DongKeywordSearchTests(TestCase):
+    """도로명 주소만 있는 장소도 좌표로 받은 동 이름으로 검색되는지, 요청 실패 시 동 이름을 잃지 않는지 확인."""
+
+    def setUp(self):
+        self.place = Place.objects.create(
+            name='소아브', address='대전광역시 유성구 봉명서로 61-8 1층', latitude=36.35, longitude=127.34)
+
+    @patch('api.kakao_images.requests.get')
+    def test_dong_search_finds_road_address_place_and_survives_failure(self, mock_get):
+        mock_get.return_value = _fake_response(200, {'documents': [
+            {'region_type': 'B', 'region_3depth_name': '봉명동'},
+            {'region_type': 'H', 'region_3depth_name': '온천1동'},
+        ]})
+        mock_get.return_value.raise_for_status = Mock()
+        naver_miner._store_structural_keywords(self.place)
+        self.assertEqual(list(recommendation.find_matching_places('봉명동')), [self.place])
+        self.assertEqual(list(recommendation.find_matching_places('온천1동 유성구')), [self.place])
+
+        mock_get.side_effect = requests.RequestException('down')
+        naver_miner._store_structural_keywords(self.place)
+        self.assertEqual(list(recommendation.find_matching_places('봉명동')), [self.place])
 
 
 class PhotoRankingTests(TestCase):
