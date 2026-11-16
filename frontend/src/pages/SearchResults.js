@@ -163,10 +163,14 @@ function SearchResults() {
                     <div className="list-main">
                       <h3>{item.name}</h3>
                       <p>{item.address}</p>
-                    </div>
-                    <div className="list-meta">
-                      <span className="meta-review">후기 {item.review_total ?? 0}</span>
-                      {item.ad_excluded > 0 && <span className="meta-ad">광고 {item.ad_excluded} 제외</span>}
+                      {item.review_total > 0 && (
+                        <p className="list-meta">
+                          후기 {item.review_total}
+                          {item.ad_excluded > 0 && (
+                            <> · <span className="meta-ad">광고 {item.ad_excluded} 제외</span></>
+                          )}
+                        </p>
+                      )}
                     </div>
                   </li>
                 ))}
