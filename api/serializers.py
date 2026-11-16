@@ -9,6 +9,15 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'first_name', 'email', 'phone_number']
 
+class ProfileSerializer(serializers.ModelSerializer):
+    """마이페이지: 로그인한 사용자 본인 정보. 이름(first_name)만 바꿀 수 있습니다."""
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'first_name', 'email', 'phone_number']
+        read_only_fields = ['id', 'username', 'email', 'phone_number']
+        extra_kwargs = {'first_name': {'required': True, 'allow_blank': False}}
+
+
 class SignupSerializer(serializers.ModelSerializer):
     id = serializers.CharField(required=False, write_only=True)
     username = serializers.CharField(required=False)

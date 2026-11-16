@@ -110,6 +110,26 @@ class AccountTests(APITestCase):
         self.assertEqual(res.status_code, 200)
         self.assertFalse(User.objects.filter(username='tester01').exists())
 
+    def test_profile_name_can_change_but_not_username(self):
+        self.assertEqual(self.client.get(reverse('profile')).status_code, status.HTTP_401_UNAUTHORIZED)
+        self.client.force_authenticate(user=self.user)
+        res = self.client.patch(reverse('profile'), {'first_name': '새이름', 'username': 'hacked'})
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['first_name'], '새이름')
+        self.user.refresh_from_db()
+        self.assertEqual((self.user.first_name, self.user.username), ('새이름', 'tester01'))
+        self.assertEqual(self.client.patch(reverse('profile'), {'first_name': ''}).status_code, 400)
+
+    def test_change_password_requires_current_password(self):
+        self.client.force_authenticate(user=self.user)
+        url = reverse('change-password')
+        self.assertEqual(self.client.post(url, {'current_password': 'wrong', 'new_password': 'BrandNewPass123'}).status_code, 400)
+        self.assertEqual(self.client.post(url, {'current_password': 'StrongPass123', 'new_password': 'short'}).status_code, 400)
+        res = self.client.post(url, {'current_password': 'StrongPass123', 'new_password': 'BrandNewPass123'})
+        self.assertEqual(res.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('BrandNewPass123'))
+
 
 class SearchAdFilterTests(APITestCase):
     """TER-003/SFR-004/SFR-008: AI 광고 판별 결과가 실제로 검색 결과에서 제외되는지 확인."""

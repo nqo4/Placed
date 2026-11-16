@@ -3,7 +3,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import (
     CheckIDView, LoginView, SignupView,
-    FindIdView, PasswordResetView, DeleteAccountView,
+    FindIdView, PasswordResetView, DeleteAccountView, ProfileView, ChangePasswordView,
     CreateInquiryView, MyInquiriesView, InquiryDetailView,
     PlaceDetailView, SimilarPlacesView, PlaceReviewsView, CreateReviewView, MyReviewsView,
     ReviewDeleteView, RecentPlacesView,
@@ -22,6 +22,9 @@ urlpatterns = [
     path('users/find-id/', FindIdView.as_view(), name='find-id'),
     path('users/password-reset/', PasswordResetView.as_view(), name='password-reset'),
     path('users/delete-account/', DeleteAccountView.as_view(), name='delete-account'),
+    # 마이페이지: 내 정보 조회·이름 수정 / 로그인 상태에서 비밀번호 변경
+    path('users/me/', ProfileView.as_view(), name='profile'),
+    path('users/change-password/', ChangePasswordView.as_view(), name='change-password'),
 
     # Inquiries
     path('inquiries/create/', CreateInquiryView.as_view(), name='create-inquiry'),

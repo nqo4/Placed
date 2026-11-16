@@ -11,7 +11,7 @@ from django.db.models import Count, Max, Q
 
 from .models import PlaceAnalysis, Place, PlaceImage, Review, ReviewSource, Inquiry, SearchLog, PlaceViewLog
 from .serializers import (
-    UserSerializer, SignupSerializer, PlaceSerializer,
+    UserSerializer, ProfileSerializer, SignupSerializer, PlaceSerializer,
     ReviewSerializer, InquirySerializer, InquiryAnswerSerializer, PlaceImageUploadSerializer,
     PlaceImageSerializer, AdminUserSerializer, PlaceAnalysisSerializer
 )
@@ -140,6 +140,31 @@ class DeleteAccountView(APIView):
 
         request.user.delete()
         return Response({'message': '회원 탈퇴가 완료되었습니다.'}, status=status.HTTP_200_OK)
+
+class ProfileView(generics.RetrieveUpdateAPIView):
+    """마이페이지: GET으로 내 정보 조회, PATCH {"first_name": "새 이름"}으로 이름 수정."""
+    serializer_class = ProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+
+class ChangePasswordView(APIView):
+    """로그인한 상태에서 현재 비밀번호를 확인하고 새 비밀번호로 바꿉니다(전화번호 불필요)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password') or ''
+        if not current_password or not request.user.check_password(current_password):
+            return Response({'message': '현재 비밀번호가 일치하지 않습니다.'}, status=status.HTTP_400_BAD_REQUEST)
+        if len(new_password) < 8:
+            return Response({'message': '비밀번호는 8자 이상이어야 합니다.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        request.user.set_password(new_password)
+        request.user.save(update_fields=['password'])
+        return Response({'message': '비밀번호가 변경되었습니다.'}, status=status.HTTP_200_OK)
 
 # --- Inquiry Views ---
 
