@@ -161,6 +161,7 @@ function PlaceDetail() {
   const [reviewText, setReviewText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [reviewNotice, setReviewNotice] = useState(null);
   const [placeData, setPlaceData] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -198,9 +199,14 @@ function PlaceDetail() {
     if (!content || submitting) return;
     setSubmitting(true);
     try {
-      await createReview(id, content);
+      const created = await createReview(id, content);
       setReviewText("");
       setShowForm(false);
+      setReviewNotice(
+        created.data?.is_hidden
+          ? { type: "hidden", text: "광고성 내용이 감지돼 다른 사람에게는 보이지 않아요. 마이페이지 > 리뷰 관리에서 확인할 수 있어요." }
+          : { type: "ok", text: "후기가 등록됐어요." }
+      );
       const res = await getReviewsByPlace(id);
       setReviews(res.data);
     } catch {
@@ -310,9 +316,12 @@ function PlaceDetail() {
                 </div>
               </form>
             ) : (
-              <button className="review-write-btn" onClick={() => setShowForm(true)}>
-                ✏️ 후기 쓰기
-              </button>
+              <>
+                {reviewNotice && <p className={`review-notice ${reviewNotice.type}`}>{reviewNotice.text}</p>}
+                <button className="review-write-btn" onClick={() => { setShowForm(true); setReviewNotice(null); }}>
+                  ✏️ 후기 쓰기
+                </button>
+              </>
             )
           ) : (
             <button className="review-login" onClick={() => navigate("/login")}>

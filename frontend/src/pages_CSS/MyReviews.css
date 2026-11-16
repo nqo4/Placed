@@ -222,6 +222,18 @@
   cursor: pointer;
 }
 
+.review-private {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #fff8e6;
+  color: #9a6700;
+  font-size: 0.75rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
 /* 모바일 */
 @media (max-width: 768px) {
   .review-section {

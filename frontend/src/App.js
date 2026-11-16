@@ -14,6 +14,8 @@ import MyPlaces from "./pages/MyPlaces";
 import MyPage from "./pages/MyPage";
 import Admin from "./pages/Admin";
 import AdCheck from "./pages/AdCheck";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 
 function App() {
   return (
@@ -33,6 +35,8 @@ function App() {
         <Route path="/reviews" element={<MyReviews />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/ad-check" element={<AdCheck />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
       </Routes>
     </Router>
   );

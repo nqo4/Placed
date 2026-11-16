@@ -198,6 +198,74 @@ input[readOnly] {
   cursor: default;
 }
 
+/* 회원 탈퇴 */
+.withdraw-area {
+  margin-top: 36px;
+  padding-top: 20px;
+  border-top: 1px solid #f0f0f0;
+  text-align: right;
+}
+
+.withdraw-link {
+  border: none;
+  background: none;
+  color: #aaa;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.withdraw-box {
+  text-align: left;
+  background: #fff8f8;
+  border: 1px solid #ffd6d6;
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.withdraw-title {
+  margin: 0 0 6px;
+  font-weight: 800;
+  color: #dc3545;
+}
+
+.withdraw-desc {
+  margin: 0 0 12px;
+  font-size: 0.88rem;
+  color: #666;
+}
+
+.withdraw-box input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.withdraw-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.withdraw-btn {
+  padding: 12px 22px;
+  background: #dc3545;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.withdraw-btn:disabled {
+  background: #f1a5ad;
+  cursor: default;
+}
+
 .mobile-logout {
   display: none;
 }
