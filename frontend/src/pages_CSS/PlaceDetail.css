@@ -79,7 +79,7 @@
   color: #ffffff;
 }
 
-.text-info .addr { color: #666; margin-bottom: 12px; font-size: 1.1rem; }
+.text-info .place-location { color: #666; margin-bottom: 12px; font-size: 1.1rem; }
 .text-info .desc { color: #444; line-height: 1.6; margin: 0; }
 
 /* 별점 */
@@ -513,7 +513,7 @@
     font-size: 0.9rem;
   }
 
-  .text-info .addr {
+  .text-info .place-location {
     font-size: 0.95rem;
   }
 

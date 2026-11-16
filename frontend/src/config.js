@@ -10,6 +10,8 @@ export const API_ROUTES = {
   LOGIN_REFRESH: "/api/users/login/refresh/",
   SIGNUP: "/api/users/signup/",
   CHECK_ID: "/api/users/check-id/",
+  PROFILE: "/api/users/me/",
+  CHANGE_PASSWORD: "/api/users/change-password/",
 
 
   CREATE_INQUIRY: "/api/inquiries/create/",

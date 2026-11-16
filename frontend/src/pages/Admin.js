@@ -190,7 +190,7 @@ function Admin() {
                       <tr key={a.id} onClick={() => setSelectedAnalysis(a)} style={{ cursor: "pointer" }}>
                         <td>{a.id}</td>
                         <td>{a.name}</td>
-                        <td><span className={`badge ${a.is_ad ? "badge-ad" : "badge-ok"}`}>{a.is_ad ? "광고" : "정상"}</span></td>
+                        <td><span className={`badge ${a.is_ad ? "badge-warn" : "badge-ok"}`}>{a.is_ad ? "광고" : "정상"}</span></td>
                         <td><strong style={{ color: a.ad_probability >= 70 ? "#28a745" : "#dc3545" }}>{a.ad_probability}%</strong></td>
                         <td className="td-truncate">{a.ai_summary}</td>
                         <td>{a.created_at?.slice(0, 10)}</td>
@@ -232,7 +232,7 @@ function Admin() {
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
             <h3>{selectedAnalysis.name}</h3>
             <div style={{ display: "flex", gap: "10px", margin: "12px 0" }}>
-              <span className={`badge ${selectedAnalysis.is_ad ? "badge-ad" : "badge-ok"}`}>
+              <span className={`badge ${selectedAnalysis.is_ad ? "badge-warn" : "badge-ok"}`}>
                 {selectedAnalysis.is_ad ? "광고" : "정상"}
               </span>
               <strong style={{ color: selectedAnalysis.ad_probability >= 70 ? "#28a745" : "#dc3545" }}>

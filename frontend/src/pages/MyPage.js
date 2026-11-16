@@ -1,20 +1,31 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "../pages_CSS/MyPage.css";
 import { clearAuth } from "../api/axiosInstance";
+import { getProfile, updateName, changePassword } from "../api/userAPI";
 
 function MyPage() {
   const navigate = useNavigate();
 
   const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
-  const [userInfo, setUserInfo] = useState({
-    name: savedUser.first_name || "",
-    email: savedUser.username || "",
-    newPassword: "",
-    confirmPassword: "",
-  });
+  const emptyPasswords = { currentPassword: "", newPassword: "", confirmPassword: "" };
+  const [profile, setProfile] = useState({ name: savedUser.first_name || "", username: savedUser.username || "" });
+  const [userInfo, setUserInfo] = useState({ name: savedUser.first_name || "", ...emptyPasswords });
+  const [message, setMessage] = useState({ text: "", type: "" });
+  const [saving, setSaving] = useState(false);
+
+  // 서버에서 최신 내 정보 불러오기
+  useEffect(() => {
+    getProfile()
+      .then((res) => {
+        const next = { name: res.data.first_name || "", username: res.data.username };
+        setProfile(next);
+        setUserInfo((prev) => ({ ...prev, name: next.name }));
+      })
+      .catch(() => {});
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -26,13 +37,65 @@ function MyPage() {
     navigate("/");
   };
 
-  const handleSave = (e) => {
+  const handleCancel = () => {
+    setUserInfo({ name: profile.name, ...emptyPasswords });
+    setMessage({ text: "", type: "" });
+  };
+
+  const errorText = (err, fallback) =>
+    err.response?.data?.message || err.response?.data?.first_name?.[0] || fallback;
+
+  const handleSave = async (e) => {
     e.preventDefault();
-    if (userInfo.newPassword !== userInfo.confirmPassword) {
-      alert("비밀번호가 일치하지 않습니다!");
+    const name = userInfo.name.trim();
+    const nameChanged = name !== profile.name;
+    const wantsPassword = !!userInfo.newPassword;
+
+    if (!nameChanged && !wantsPassword) {
+      setMessage({ text: "변경된 내용이 없어요.", type: "info" });
       return;
     }
-    alert("변경 사항이 저장되었습니다.");
+    if (nameChanged && !name) {
+      setMessage({ text: "이름을 입력해주세요.", type: "error" });
+      return;
+    }
+    if (wantsPassword) {
+      if (!userInfo.currentPassword) {
+        setMessage({ text: "비밀번호를 바꾸려면 현재 비밀번호를 입력해주세요.", type: "error" });
+        return;
+      }
+      if (userInfo.newPassword.length < 8) {
+        setMessage({ text: "새 비밀번호는 8자 이상이어야 해요.", type: "error" });
+        return;
+      }
+      if (userInfo.newPassword !== userInfo.confirmPassword) {
+        setMessage({ text: "새 비밀번호와 확인이 일치하지 않아요.", type: "error" });
+        return;
+      }
+    }
+
+    setSaving(true);
+    const done = [];
+    try {
+      if (nameChanged) {
+        const res = await updateName(name);
+        const newName = res.data.first_name;
+        setProfile((prev) => ({ ...prev, name: newName }));
+        localStorage.setItem("user", JSON.stringify({ ...savedUser, first_name: newName }));
+        done.push("이름");
+      }
+      if (wantsPassword) {
+        await changePassword(userInfo.currentPassword, userInfo.newPassword);
+        done.push("비밀번호");
+      }
+      setUserInfo((prev) => ({ ...prev, ...emptyPasswords }));
+      setMessage({ text: `${done.join("와 ")}를 변경했어요.`, type: "success" });
+    } catch (err) {
+      const prefix = done.length ? `${done.join("와 ")}는 변경했지만, ` : "";
+      setMessage({ text: prefix + errorText(err, "저장에 실패했어요. 잠시 후 다시 시도해주세요."), type: "error" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -62,7 +125,7 @@ function MyPage() {
               <span className="avatar-icon">👤</span>
             </div>
             <div className="profile-text">
-              <p className="profile-name">{userInfo.name || userInfo.email}</p>
+              <p className="profile-name">{profile.name || profile.username}</p>
             </div>
           </div>
 
@@ -70,7 +133,7 @@ function MyPage() {
             <div className="form-row">
               <div className="form-field">
                 <label>아이디</label>
-                <input type="text" value={userInfo.email} readOnly />
+                <input type="text" value={profile.username} readOnly />
               </div>
               <div className="form-field">
                 <label>이름</label>
@@ -84,12 +147,27 @@ function MyPage() {
             </div>
             <div className="form-row">
               <div className="form-field">
+                <label>현재 비밀번호</label>
+                <input
+                  type="password"
+                  name="currentPassword"
+                  placeholder="비밀번호를 바꿀 때만 입력"
+                  value={userInfo.currentPassword}
+                  onChange={handleChange}
+                  autoComplete="current-password"
+                />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-field">
                 <label>새 비밀번호</label>
                 <input
                   type="password"
                   name="newPassword"
-                  placeholder="변경할 비밀번호"
+                  placeholder="8자 이상"
+                  value={userInfo.newPassword}
                   onChange={handleChange}
+                  autoComplete="new-password"
                 />
               </div>
               <div className="form-field">
@@ -97,17 +175,20 @@ function MyPage() {
                 <input
                   type="password"
                   name="confirmPassword"
-                  placeholder="비밀번호 재입력"
+                  placeholder="새 비밀번호 재입력"
+                  value={userInfo.confirmPassword}
                   onChange={handleChange}
+                  autoComplete="new-password"
                 />
               </div>
             </div>
+            {message.text && <p className={`form-message ${message.type}`}>{message.text}</p>}
             <div className="form-buttons">
-              <button type="button" className="cancel-btn" onClick={() => navigate("/main")}>
+              <button type="button" className="cancel-btn" onClick={handleCancel}>
                 취소
               </button>
-              <button type="submit" className="save-btn">
-                변경 사항 저장
+              <button type="submit" className="save-btn" disabled={saving}>
+                {saving ? "저장 중..." : "변경 사항 저장"}
               </button>
             </div>
           </form>

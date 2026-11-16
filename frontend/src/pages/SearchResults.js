@@ -163,14 +163,10 @@ function SearchResults() {
                     <div className="list-main">
                       <h3>{item.name}</h3>
                       <p>{item.address}</p>
-                      {item.review_total > 0 && (
-                        <p className="list-meta">
-                          후기 {item.review_total}
-                          {item.ad_excluded > 0 && (
-                            <> · <span className="meta-ad">광고 {item.ad_excluded} 제외</span></>
-                          )}
-                        </p>
-                      )}
+                    </div>
+                    <div className="list-meta">
+                      <span className="meta-review">후기 {item.review_total ?? 0}</span>
+                      {item.ad_excluded > 0 && <span className="meta-excluded">광고 {item.ad_excluded} 제외</span>}
                     </div>
                   </li>
                 ))}
@@ -196,7 +192,7 @@ function SearchResults() {
                       <p className="card-review-count">
                         후기 {item.review_total}개 분석
                         {item.ad_excluded > 0 && (
-                          <> · <span className="ad-excluded">광고 의심 {item.ad_excluded}개 제외</span></>
+                          <> · <span className="count-excluded">광고 의심 {item.ad_excluded}개 제외</span></>
                         )}
                       </p>
                     )}
