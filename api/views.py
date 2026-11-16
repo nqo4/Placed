@@ -274,7 +274,8 @@ class PlaceReviewsView(generics.ListAPIView):
 
     def get_queryset(self):
         place_id = self.kwargs['place_id']
-        return Review.objects.filter(place_id=place_id)
+        # 광고로 판단된 직접 작성 리뷰는 저장은 하되 장소 상세에는 보여주지 않습니다(작성자는 내 리뷰에서 확인).
+        return Review.objects.filter(place_id=place_id).exclude(ad_probability__gte=settings.AD_EXCLUDE_THRESHOLD)
 
     def list(self, request, *args, **kwargs):
         place_id = self.kwargs['place_id']
@@ -313,7 +314,10 @@ class CreateReviewView(generics.CreateAPIView):
     def perform_create(self, serializer):
         place_id = self.request.data.get('place_id')
         place = get_object_or_404(Place, id=place_id)
-        serializer.save(user=self.request.user, place=place)
+        # 블로그 후기와 같은 기준으로 광고 여부를 판별합니다. 분석이 실패하면 비워 두고 숨기지 않습니다.
+        result = analyze_review(serializer.validated_data.get('content', ''), place_name=place.name)
+        ad_probability = None if result.get('analysis_failed') else 100 - result.get('non_ad_probability', 50)
+        serializer.save(user=self.request.user, place=place, ad_probability=ad_probability)
 
 class MyReviewsView(generics.ListAPIView):
     serializer_class = ReviewSerializer

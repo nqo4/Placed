@@ -131,6 +131,35 @@ class AccountTests(APITestCase):
         self.assertTrue(self.user.check_password('BrandNewPass123'))
 
 
+@override_settings(AD_EXCLUDE_THRESHOLD=70)
+class UserReviewAdHidingTests(APITestCase):
+    """직접 쓴 리뷰도 광고 판별을 하고, 광고면 저장은 하되 장소 상세에서 숨기는지 확인."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='writer', password='StrongPass123')
+        self.place = Place.objects.create(name='파이룸', address='대전 유성구')
+        self.client.force_authenticate(user=self.user)
+
+    def _write(self, mock_analyze, result, content):
+        mock_analyze.return_value = result
+        res = self.client.post(reverse('create-review'), {'place': self.place.id, 'place_id': self.place.id, 'content': content})
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        return res.data
+
+    @patch('api.views.analyze_review')
+    def test_ad_review_is_saved_but_hidden_from_place_page(self, mock_analyze):
+        ad = self._write(mock_analyze, {'non_ad_probability': 10}, '협찬받아 작성한 글')
+        real = self._write(mock_analyze, {'non_ad_probability': 90}, '내돈내산 후기')
+        failed = self._write(mock_analyze, {'non_ad_probability': 50, 'analysis_failed': True}, '분석 실패한 글')
+        self.assertEqual((ad['ad_probability'], ad['is_hidden']), (90, True))
+        self.assertEqual(failed['ad_probability'], None)
+
+        shown = {r['id'] for r in self.client.get(reverse('place-reviews', args=[self.place.id])).data}
+        self.assertEqual(shown, {real['id'], failed['id']})
+        mine = {r['id'] for r in self.client.get(reverse('my-reviews')).data}
+        self.assertEqual(mine, {ad['id'], real['id'], failed['id']})
+
+
 class SearchAdFilterTests(APITestCase):
     """TER-003/SFR-004/SFR-008: AI 광고 판별 결과가 실제로 검색 결과에서 제외되는지 확인."""
 

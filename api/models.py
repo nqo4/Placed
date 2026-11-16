@@ -175,6 +175,9 @@ class Review(models.Model):
     content = models.TextField()
     hashtags = models.TextField(blank=True, null=True, help_text="해시태그들을 저장합니다.")
     rating = models.IntegerField(default=5)
+    # 사용자가 직접 쓴 리뷰의 광고일 확률(0~100). AD_EXCLUDE_THRESHOLD 이상이면 다른 사용자에게 숨깁니다.
+    # None = 분석하지 않았거나 실패(숨기지 않음).
+    ad_probability = models.IntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

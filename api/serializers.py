@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from .models import Place, PlaceImage, Review, Inquiry, PlaceAnalysis
 
@@ -125,10 +126,16 @@ class PlaceImageUploadSerializer(serializers.ModelSerializer):
 class ReviewSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     place_name = serializers.ReadOnlyField(source='place.name')
+    is_hidden = serializers.SerializerMethodField()
 
     class Meta:
         model = Review
-        fields = ['id', 'place', 'place_name', 'user', 'content', 'rating', 'created_at']
+        fields = ['id', 'place', 'place_name', 'user', 'content', 'rating', 'ad_probability', 'is_hidden', 'created_at']
+        read_only_fields = ['ad_probability']
+
+    def get_is_hidden(self, obj):
+        """광고로 판단돼 장소 상세에서 다른 사용자에게 보이지 않는 리뷰인지(내 리뷰 목록에서 안내용)."""
+        return obj.ad_probability is not None and obj.ad_probability >= settings.AD_EXCLUDE_THRESHOLD
 
 
 # 관리자용 - is_staff, date_joined 포함
