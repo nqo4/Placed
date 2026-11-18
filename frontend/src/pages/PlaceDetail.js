@@ -25,6 +25,7 @@ function ImageSlider({ images }) {
       <img
         src={typeof images[current] === "string" ? images[current] : images[current]?.url}
         alt={`슬라이드 ${current + 1}`}
+        referrerPolicy="no-referrer"
         style={{ width: "100%", height: "100%", objectFit: "contain", background: "#f0f0f0" }}
       />
       <button onClick={prev} style={{
@@ -270,13 +271,13 @@ function PlaceDetail() {
         <section className="info-card">
           <ImageSlider images={placeData.images} />
           <div className="text-info">
-            <div className="title-row">
-              <h2>{placeData.name}</h2>
+            <h2 className="place-title">{placeData.name}</h2>
+            <div className="location-row">
+              <p className="place-location">주소 : {placeData.address}</p>
               <button className="dir-btn" onClick={handleDirections}>
                 📍 길찾기
               </button>
             </div>
-            <p className="place-location">주소 : {placeData.address}</p>
             {placeData.latitude != null && placeData.longitude != null && (
               <PlaceMap name={placeData.name} lat={placeData.latitude} lng={placeData.longitude} />
             )}

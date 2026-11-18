@@ -4,6 +4,8 @@ import { signupUser, checkDuplicateId } from "../api/userAPI";
 import Footer from "../components/Footer";
 import "../pages_CSS/Signup.css";
 
+const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
 function Signup() {
   const navigate = useNavigate();
   
@@ -19,9 +21,10 @@ function Signup() {
   };
 
   const handleCheckDuplicate = async () => {
-    if (!id.trim()) return showToast("아이디를 입력하세요.", "error");
+    if (!id.trim()) return showToast("이메일을 입력하세요.", "error");
+    if (!isEmail(id)) return showToast("이메일 형식으로 입력해 주세요. (예: user@example.com)", "error");
     try {
-      const res = await checkDuplicateId(id);
+      const res = await checkDuplicateId(id.trim());
       res.data.isAvailable
         ? showToast("사용 가능한 아이디입니다.", "success")
         : showToast("이미 사용 중인 아이디입니다.", "error");
@@ -33,12 +36,15 @@ function Signup() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isEmail(id)) {
+      return showToast("이메일 형식으로 입력해 주세요. (예: user@example.com)", "error");
+    }
     if (password !== confirm) {
       return showToast("비밀번호가 일치하지 않습니다.", "error");
     }
 
     try {
-      await signupUser(id, password, name);
+      await signupUser(id.trim(), password, name);
       showToast("회원가입 완료!", "success");
       setTimeout(() => navigate("/login"), 1500);
     } catch (err) {
@@ -64,12 +70,14 @@ function Signup() {
         <div className="signup-card">
         <h1 className="placed-logo">PLACED</h1>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div className="input-group">
             <label>이메일 계정</label>
             <div className="input-row">
               <input
-                type="text"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
                 placeholder="user@example.com"
                 value={id}
                 onChange={(e) => setId(e.target.value)}

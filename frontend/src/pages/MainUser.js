@@ -13,7 +13,7 @@ function RecommendCard({ type, place, onClick }) {
   return (
     <div className="card" onClick={onClick}>
       {imageUrl ? (
-        <img src={imageUrl} alt={place.name} onError={() => setImageIndex(imageIndex + 1)} />
+        <img src={imageUrl} alt={place.name} referrerPolicy="no-referrer" onError={() => setImageIndex(imageIndex + 1)} />
       ) : (
         <div className="card-no-image">사진 준비 중</div>
       )}

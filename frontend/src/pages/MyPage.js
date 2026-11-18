@@ -51,6 +51,11 @@ function MyPage() {
     navigate("/");
   };
 
+  const openWithdraw = () => {
+    setShowWithdraw(true);
+    setTimeout(() => document.querySelector(".withdraw-area")?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+  };
+
   const handleWithdraw = async () => {
     if (!withdrawPassword) {
       setWithdrawError("비밀번호를 입력해주세요.");
@@ -147,6 +152,9 @@ function MyPage() {
             <button className="menu-btn logout-btn" onClick={handleLogout}>
               로그아웃
             </button>
+            <button className="menu-btn withdraw-menu" onClick={openWithdraw}>
+              회원 탈퇴
+            </button>
           </nav>
         </aside>
 
@@ -227,11 +235,7 @@ function MyPage() {
           </form>
 
           <div className="withdraw-area">
-            {!showWithdraw ? (
-              <button type="button" className="withdraw-link" onClick={() => setShowWithdraw(true)}>
-                회원 탈퇴
-              </button>
-            ) : (
+            {showWithdraw && (
               <div className="withdraw-box">
                 <p className="withdraw-title">회원 탈퇴</p>
                 <p className="withdraw-desc">
@@ -261,7 +265,11 @@ function MyPage() {
             )}
           </div>
         </main>
-        <button className="mobile-logout" onClick={handleLogout}>로그아웃</button>
+        <div className="mobile-account">
+          <button className="mobile-logout" onClick={handleLogout}>로그아웃</button>
+          <span>·</span>
+          <button className="mobile-withdraw" onClick={openWithdraw}>회원 탈퇴</button>
+        </div>
       </div>
       <Footer />
     </div>

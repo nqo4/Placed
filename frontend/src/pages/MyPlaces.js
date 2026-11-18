@@ -53,6 +53,7 @@ function MyPlaces() {
               className="place-thumb"
               src={p.images?.[0]?.url || p.image_url || FALLBACK_IMG}
               alt={p.name}
+              referrerPolicy="no-referrer"
               onError={(e) => { e.currentTarget.src = FALLBACK_IMG; }}
             />
             <div className="place-info">
