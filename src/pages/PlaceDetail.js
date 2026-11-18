@@ -270,13 +270,13 @@ function PlaceDetail() {
         <section className="info-card">
           <ImageSlider images={placeData.images} />
           <div className="text-info">
-            <div className="title-row">
-              <h2>{placeData.name}</h2>
+            <h2 className="place-title">{placeData.name}</h2>
+            <div className="location-row">
+              <p className="place-location">주소 : {placeData.address}</p>
               <button className="dir-btn" onClick={handleDirections}>
                 📍 길찾기
               </button>
             </div>
-            <p className="place-location">주소 : {placeData.address}</p>
             {placeData.latitude != null && placeData.longitude != null && (
               <PlaceMap name={placeData.name} lat={placeData.latitude} lng={placeData.longitude} />
             )}

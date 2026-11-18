@@ -200,19 +200,16 @@ input[readOnly] {
 
 /* 회원 탈퇴 */
 .withdraw-area {
-  margin-top: 36px;
-  padding-top: 20px;
-  border-top: 1px solid #f0f0f0;
-  text-align: right;
+  margin-top: 24px;
 }
 
-.withdraw-link {
-  border: none;
-  background: none;
-  color: #aaa;
-  font-size: 0.85rem;
-  text-decoration: underline;
-  cursor: pointer;
+.withdraw-area:empty {
+  display: none;
+}
+
+.menu-btn.withdraw-menu {
+  color: #999;
+  font-size: 0.9rem;
 }
 
 .withdraw-box {
@@ -266,7 +263,7 @@ input[readOnly] {
   cursor: default;
 }
 
-.mobile-logout {
+.mobile-account {
   display: none;
 }
 
@@ -310,21 +307,36 @@ input[readOnly] {
   }
 
   .mypage-sidebar .sidebar-divider,
-  .mypage-sidebar .logout-btn {
+  .mypage-sidebar .logout-btn,
+  .mypage-sidebar .withdraw-menu {
     display: none;
   }
 
-  .mobile-logout {
-    display: block;
-    align-self: center;
-    margin: 4px auto 0;
-    padding: 8px 16px;
+  .mobile-account {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 4px;
+    color: #ccc;
+  }
+
+  .mobile-logout,
+  .mobile-withdraw {
+    padding: 8px 4px;
     border: none;
     background: none;
-    color: #ff4d4f;
     font-size: 0.9rem;
     font-weight: 600;
     cursor: pointer;
+  }
+
+  .mobile-logout {
+    color: #ff4d4f;
+  }
+
+  .mobile-withdraw {
+    color: #999;
   }
 
   .settings-section {
