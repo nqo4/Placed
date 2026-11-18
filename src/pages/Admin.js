@@ -191,7 +191,7 @@ function Admin() {
                         <td>{a.id}</td>
                         <td>{a.name}</td>
                         <td><span className={`badge ${a.is_ad ? "badge-warn" : "badge-ok"}`}>{a.is_ad ? "광고" : "정상"}</span></td>
-                        <td><strong style={{ color: a.ad_probability >= 70 ? "#28a745" : "#dc3545" }}>{a.ad_probability}%</strong></td>
+                        <td><strong style={{ color: a.ad_probability >= 70 ? "#dc3545" : "#28a745" }}>{a.ad_probability}%</strong></td>
                         <td className="td-truncate">{a.ai_summary}</td>
                         <td>{a.created_at?.slice(0, 10)}</td>
                       </tr>
@@ -235,7 +235,7 @@ function Admin() {
               <span className={`badge ${selectedAnalysis.is_ad ? "badge-warn" : "badge-ok"}`}>
                 {selectedAnalysis.is_ad ? "광고" : "정상"}
               </span>
-              <strong style={{ color: selectedAnalysis.ad_probability >= 70 ? "#28a745" : "#dc3545" }}>
+              <strong style={{ color: selectedAnalysis.ad_probability >= 70 ? "#dc3545" : "#28a745" }}>
                 신뢰도 {selectedAnalysis.ad_probability}%
               </strong>
             </div>
