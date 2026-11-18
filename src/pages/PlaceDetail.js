@@ -25,6 +25,7 @@ function ImageSlider({ images }) {
       <img
         src={typeof images[current] === "string" ? images[current] : images[current]?.url}
         alt={`슬라이드 ${current + 1}`}
+        referrerPolicy="no-referrer"
         style={{ width: "100%", height: "100%", objectFit: "contain", background: "#f0f0f0" }}
       />
       <button onClick={prev} style={{

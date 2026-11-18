@@ -158,6 +158,7 @@ function SearchResults() {
                       className="list-thumb"
                       src={imageOf(item)}
                       alt={item.name}
+                      referrerPolicy="no-referrer"
                       onError={(e) => { e.currentTarget.src = FALLBACK_IMG; }}
                     />
                     <div className="list-main">
@@ -180,6 +181,7 @@ function SearchResults() {
                       src={imageOf(item)}
                       alt={item.name}
                       className="result-img"
+                      referrerPolicy="no-referrer"
                     />
                   </div>
                   <div className="card-info-box">
