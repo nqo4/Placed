@@ -37,3 +37,4 @@ placed_backend/initial_data.json
 # 로컬 DB 덤프 (회원 정보 포함, 커밋 금지)
 placed_data.json
 *.dump
+backups/
