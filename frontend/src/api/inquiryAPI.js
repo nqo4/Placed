@@ -9,3 +9,6 @@ export const getMyInquiries = () =>
 
 export const getInquiryDetail = (id) =>
   API.get(`${API_ROUTES.INQUIRY_DETAIL}${id}/`);
+
+export const deleteInquiry = (id) =>
+  API.delete(`${API_ROUTES.INQUIRY_DETAIL}${id}/`);
