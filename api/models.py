@@ -148,6 +148,7 @@ class PlaceKeyword(models.Model):
         ('location', '위치'),
         ('category', '종류'),
         ('mood', '분위기/특징'),
+        ('menu', '메뉴'),  # 광고 아닌 후기에 나온 음식 이름 (keyword_taxonomy.MENU_KEYWORDS)
     ]
     place = models.ForeignKey(Place, on_delete=models.CASCADE, related_name='keywords')
     keyword = models.CharField(max_length=50)

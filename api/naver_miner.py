@@ -126,7 +126,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Count, Q
 
 from .gemini_service import analyze_review, extract_mood_keywords
-from .keyword_taxonomy import MAX_MOOD_KEYWORDS_PER_PLACE, MOOD_KEYWORDS
+from .keyword_taxonomy import MAX_MOOD_KEYWORDS_PER_PLACE, MENU_KEYWORDS, MOOD_KEYWORDS
 from .models import Place, PlaceAnalysis, PlaceImage, PlaceKeyword, Review, ReviewSource
 from .kakao_images import dong_names
 from .recommendation import category_tokens, neighborhood_hint, region_hint
@@ -1126,6 +1126,25 @@ def _extract_mood_keywords(place, scored):
     logger.info("   [분위기 키워드] %s -> %s", place.name, valid_keywords or '(없음)')
 
 
+def store_menu_keywords(place):
+    """
+    광고가 아닌 후기 글(제목·본문)과 숨기지 않은 사용자 리뷰에 나온 음식 이름을 menu 키워드로
+    저장합니다. MENU_KEYWORDS 안의 이름만 찾는 문자열 비교라 AI 호출과 비용이 없습니다.
+    저장한 메뉴 목록을 돌려줍니다.
+    """
+    threshold = getattr(settings, 'AD_EXCLUDE_THRESHOLD', 70)
+    sources = place.review_sources.filter(
+        is_review=True, has_place_info=True, analysis_failed=False, ad_probability__lt=threshold
+    ).values_list('title', 'content_text')
+    reviews = place.reviews.exclude(ad_probability__gte=threshold).values_list('content', flat=True)
+    text = ' '.join([f'{t or ""} {c or ""}' for t, c in sources] + list(reviews))
+    menus = [menu for menu in MENU_KEYWORDS if menu in text]
+
+    place.keywords.filter(keyword_type='menu').delete()
+    PlaceKeyword.objects.bulk_create([PlaceKeyword(place=place, keyword_type='menu', keyword=m) for m in menus])
+    return menus
+
+
 def _save_fallback_placeholder(place, default_user, no_sources_reason):
     """
     [공용 placeholder 처리] 후보 글을 하나도 못 찾았거나(전체 개수 0건), 후보는 있었지만
@@ -1276,6 +1295,7 @@ def _refresh_place_reviews(place, headers, default_user, request_interval):
     _save_review_sources(place, scored + non_reviews)
 
     _extract_mood_keywords(place, scored)
+    store_menu_keywords(place)
 
     logger.info(
         "   [DB 저장 완료] %s -> 글 %s건 평균 비광고 확률 %s%% (대표 리뷰 1건 노출)",

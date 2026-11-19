@@ -28,9 +28,12 @@ import re
 from collections import Counter
 
 from django.contrib.postgres.search import TrigramSimilarity
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q, Value
+from django.db.models.functions import Replace
 
-from .keyword_taxonomy import PLACE_TYPE_ORDER, classify_place_type
+from .keyword_taxonomy import (
+    MENU_KEYWORDS, MOOD_KEYWORDS, PLACE_TYPE_ORDER, SEARCH_STOPWORDS, classify_place_type,
+)
 from .models import Place, PlaceKeyword, PlaceViewLog, SearchLog
 
 # [PostgreSQL pg_trgm 기반 오타/유사 표기 허용] Elasticsearch 없이, 이미 쓰고 있는
@@ -76,25 +79,78 @@ def find_matching_places(keyword):
     다르게(예: _name_sim_0, _addr_sim_0) 둬서 토큰별 유사도 계산이 서로 덮어쓰지 않게
     합니다.
     """
-    tokens = [t for t in keyword.split() if t]
+    tokens = search_tokens(keyword)
     if not tokens:
         return Place.objects.none()
 
-    places_qs = Place.objects.all()
+    # 상호명은 띄어쓰기를 빼고도 비교합니다("스타벅스궁동점" → "스타벅스 궁동점").
+    places_qs = Place.objects.annotate(_name_nospace=Replace('name', Value(' '), Value('')))
     for i, token in enumerate(tokens):
         name_sim = f'_name_sim_{i}'
         addr_sim = f'_addr_sim_{i}'
-        places_qs = places_qs.annotate(**{
-            name_sim: TrigramSimilarity('name', token),
-            addr_sim: TrigramSimilarity('address', token),
-        }).filter(
+        match = (
             Q(name__icontains=token)
+            | Q(_name_nospace__icontains=token)
             | Q(address__icontains=token)
             | Q(keywords__keyword__icontains=token)
             | Q(**{f'{name_sim}__gte': TRIGRAM_SIMILARITY_THRESHOLD})
             | Q(**{f'{addr_sim}__gte': TRIGRAM_SIMILARITY_THRESHOLD})
         )
-    return places_qs.distinct()
+        # 음식 이름이면 그 음식을 파는 업종도 포함합니다("짬뽕" → 중식당).
+        for fragment in MENU_KEYWORDS.get(token, []):
+            match |= Q(keywords__keyword_type='category', keywords__keyword__icontains=fragment)
+        places_qs = places_qs.annotate(**{
+            name_sim: TrigramSimilarity('name', token),
+            addr_sim: TrigramSimilarity('address', token),
+        }).filter(match)
+
+    places_qs = places_qs.distinct()
+    menu_tokens = [t for t in tokens if t in MENU_KEYWORDS]
+    if menu_tokens:
+        # 후기에 그 음식이 나온 장소를 업종만 맞는 장소보다 앞에 둡니다.
+        mentioned = PlaceKeyword.objects.filter(place=OuterRef('pk'), keyword_type='menu', keyword__in=menu_tokens)
+        places_qs = places_qs.annotate(_menu_hit=Exists(mentioned)).order_by('-_menu_hit', 'id')
+    return places_qs
+
+
+def _search_vocabulary():
+    """붙여 쓴 검색어를 나눌 때 쓰는 단어 목록: 장소 키워드 조각, 메뉴·분위기 키워드."""
+    words = set(MENU_KEYWORDS) | set(MOOD_KEYWORDS)
+    for keyword in PlaceKeyword.objects.values_list('keyword', flat=True).distinct():
+        words.update(w for w in re.split(r'[\s,>]+', keyword) if len(w) >= 2)
+    return words
+
+
+def split_compound(token, vocabulary):
+    """
+    "디저트카페"처럼 붙여 쓴 검색어를 아는 단어로만 끝까지 나눌 수 있으면 ["디저트", "카페"]를,
+    아니면 None을 돌려줍니다. 가장 적은 조각으로 나눈 결과를 씁니다.
+    """
+    n = len(token)
+    best = [None] * (n + 1)  # best[i] = token[:i]를 나눈 가장 짧은 조각 목록
+    best[0] = []
+    for end in range(2, n + 1):
+        for start in range(0, end - 1):
+            if best[start] is not None and token[start:end] in vocabulary:
+                candidate = best[start] + [token[start:end]]
+                if best[end] is None or len(candidate) < len(best[end]):
+                    best[end] = candidate
+    parts = best[n]
+    return parts if parts and len(parts) > 1 else None
+
+
+def search_tokens(keyword):
+    """검색어를 띄어쓰기로 나누고, 뜻 없는 말("맛집")을 빼고, 붙여 쓴 말은 아는 단어로 나눕니다."""
+    tokens = [t for t in (keyword or '').split() if t]
+    tokens = [t for t in tokens if t not in SEARCH_STOPWORDS] or tokens
+    vocabulary = None
+    result = []
+    for token in tokens:
+        if vocabulary is None:
+            vocabulary = _search_vocabulary()
+        parts = None if token in vocabulary else split_compound(token, vocabulary)
+        result.extend(parts or [token])
+    return result
 
 
 def region_hint(address):

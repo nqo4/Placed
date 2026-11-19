@@ -259,6 +259,48 @@ class SearchKeywordAwareTests(APITestCase):
         self.assertEqual(names.count(self.loud_cafe.name), 1)
 
 
+@override_settings(AD_EXCLUDE_THRESHOLD=70)
+class SearchSpacingAndMenuTests(TestCase):
+    """붙여 쓴 검색어, 음식 이름 검색(후기 언급 + 업종), "맛집" 같은 말 빼기를 확인."""
+
+    def setUp(self):
+        def place(name, category, menu_text=None):
+            p = Place.objects.create(name=name, address='대전 서구 둔산동', category=category)
+            for t in category.replace('>', ',').split(','):
+                PlaceKeyword.objects.create(place=p, keyword_type='category', keyword=t)
+            if menu_text:
+                ReviewSource.objects.create(place=p, url=f'http://blog/{name}', title=name, content_text=menu_text,
+                                            is_review=True, has_place_info=True, ad_probability=10)
+                ReviewSource.objects.create(place=p, url=f'http://blog/{name}-ad', title='협찬', content_text='라떼 최고',
+                                            is_review=True, has_place_info=True, ad_probability=95)
+            naver_miner.store_menu_keywords(p)
+            return p
+        self.jjamppong = place('니짬내짬', '중식>중식당', '불맛 짬뽕이 진해요')
+        self.chinese = place('자유대반점', '중식>중식당')
+        self.cafe = place('하레하레', '카페,디저트>카페', '케이크가 촉촉해요')
+        self.korean = place('한밭식당', '한식>국밥')
+
+    def names(self, q):
+        return [p.name for p in recommendation.find_matching_places(q)]
+
+    def test_split_compound_uses_known_words_only(self):
+        vocab = {'디저트', '카페', '유성구'}
+        self.assertEqual(recommendation.split_compound('디저트카페', vocab), ['디저트', '카페'])
+        self.assertIsNone(recommendation.split_compound('스타벅스카페', vocab))
+
+    def test_compound_query_matches_like_spaced_query(self):
+        self.assertEqual(self.names('디저트카페'), self.names('디저트 카페'))
+        self.assertIn('하레하레', self.names('디저트카페'))
+
+    def test_dish_search_finds_mentioned_place_first_then_same_category(self):
+        self.assertEqual(self.names('짬뽕'), ['니짬내짬', '자유대반점'])  # 후기 언급 → 업종만 맞음 순서
+        self.assertEqual(self.names('케이크'), ['하레하레'])
+        self.assertEqual(self.names('둔산동 짬뽕 맛집'), ['니짬내짬', '자유대반점'])  # "맛집"은 뺌
+
+    def test_menu_keywords_ignore_ad_posts(self):
+        self.assertEqual(list(self.cafe.keywords.filter(keyword_type='menu').values_list('keyword', flat=True)), ['케이크'])
+
+
 class PlaceViewLogTests(APITestCase):
     """
     [추가] SFR-005/SFR-007/DAR-002: 사용자가 장소 상세를 실제로 조회(선택)한 이력이
