@@ -117,6 +117,7 @@ import logging
 import re
 import time
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from itertools import zip_longest
 from urllib.parse import quote, urlparse
 
@@ -1063,10 +1064,16 @@ def _score_review_sources(place, candidates):
         for rs in place.review_sources.filter(analysis_failed=False, topic_keywords__isnull=False)
     }
 
+    key_of = lambda c: (c["source_type"], c["url"] or "", c["content"])
+    # Gemini 응답이 느릴 때를 대비해 새로 판정할 글은 GEMINI_WORKERS개씩 동시에 보냅니다(기본 1 = 순서대로).
+    todo = [c for c in candidates if key_of(c) not in existing_by_key]
+    with ThreadPoolExecutor(max_workers=max(1, getattr(settings, 'GEMINI_WORKERS', 1))) as pool:
+        ai_results = dict(zip(map(key_of, todo), pool.map(lambda c: _analyze_or_stop(c["content"], place.name), todo)))
+
     scored = []
     reused_count = 0
     for cand in candidates:
-        key = (cand["source_type"], cand["url"] or "", cand["content"])
+        key = key_of(cand)
         existing = existing_by_key.get(key)
 
         if existing:
@@ -1080,7 +1087,7 @@ def _score_review_sources(place, candidates):
             reason = None
             reused_count += 1
         else:
-            ai_result = _analyze_or_stop(cand["content"], place.name)
+            ai_result = ai_results[key]
             analysis_failed = ai_result.get("analysis_failed", False)
             non_ad_probability = ai_result.get("non_ad_probability", 50)
             ad_probability = 100 - non_ad_probability

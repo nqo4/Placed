@@ -306,6 +306,15 @@ class SearchSpacingAndMenuTests(TestCase):
         self.assertFalse(dup('태평소국밥', '대전광역시 서구 둔산로31번길 52'))      # 다른 지점
         self.assertFalse(dup('다른가게', '대전광역시 중구 보문로260번길 64 3층'))   # 같은 건물 다른 가게
 
+    @override_settings(GEMINI_WORKERS=3)
+    @patch('api.naver_miner._analyze_or_stop')
+    def test_parallel_scoring_keeps_each_result_with_its_post(self, mock_analyze):
+        mock_analyze.side_effect = lambda text, name: {'non_ad_probability': int(text), 'is_ad': int(text) < 30}
+        cands = [{'source_type': 'blog', 'url': f'http://b/{i}', 'content': str(p), 'title': ''} for i, p in enumerate([90, 10, 70, 20])]
+        scored = naver_miner._score_review_sources(self.korean, cands)
+        self.assertEqual([s['ad_probability'] for s in scored], [10, 90, 30, 80])
+        self.assertEqual(mock_analyze.call_count, 4)
+
     def test_menu_keywords_ignore_ad_posts(self):
         self.assertEqual(list(self.cafe.keywords.filter(keyword_type='menu').values_list('keyword', flat=True)), ['케이크'])
 

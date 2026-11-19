@@ -245,6 +245,7 @@ AD_EXCLUDE_THRESHOLD = env('AD_EXCLUDE_THRESHOLD', '70', cast=int)
 
 # 장소 하나당 AI로 분석할 블로그·카페 글 상한 (api/naver_miner.py). 늘리면 Gemini 호출도 늘어납니다.
 MAX_REVIEW_SOURCES = env('MAX_REVIEW_SOURCES', '40', cast=int)
+GEMINI_WORKERS = env('GEMINI_WORKERS', '1', cast=int)  # 수집 때 Gemini 판정을 동시에 보낼 개수 (api/naver_miner.py)
 
 # [추가] DAR-001/DAR-004 크롤러(api/naver_miner.py)의 진행 상황·오류를 콘솔에서 바로 볼 수
 # 있도록 로깅을 설정합니다. 기존에는 print()만 사용해 관리 명령 밖(스케줄러 등)에서 실행하면
