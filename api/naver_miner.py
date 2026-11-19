@@ -123,6 +123,7 @@ from urllib.parse import quote, urlparse
 import requests
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import close_old_connections, connection
 from django.db.models import Count, Q
 
 from .gemini_service import analyze_review, extract_mood_keywords
@@ -429,6 +430,15 @@ def _is_duplicate_place(name, address):
     """
     return any(same_address(address, existing)
                for existing in Place.objects.filter(name=name).values_list('address', flat=True))
+
+
+def reconnect_if_dropped():
+    """
+    몇 시간씩 도는 수집 작업 중 DB 서버(Render)가 연결을 끊을 수 있어, 장소마다 끊긴 연결은 버리고
+    다음 쿼리에서 새로 연결하게 합니다. 트랜잭션 안(테스트 포함)에서는 연결을 건드리지 않습니다.
+    """
+    if not connection.in_atomic_block:
+        close_old_connections()
 
 
 def same_address(a, b):
@@ -1382,6 +1392,7 @@ def refresh_existing_places(request_interval=0.2, only_new=False, only_failed=Fa
 
     updated = 0
     for place in places:
+        reconnect_if_dropped()
         try:
             _refresh_place_reviews(place, headers, default_user, request_interval)
             updated += 1

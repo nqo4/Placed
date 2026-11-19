@@ -12,6 +12,7 @@ from api.naver_miner import (
     _get_naver_headers,
     _image_queries,
     find_place_images,
+    reconnect_if_dropped,
     save_place_images,
 )
 
@@ -48,6 +49,7 @@ class Command(BaseCommand):
         dry = options["dry_run"]
         found = empty = 0
         for place in places:
+            reconnect_if_dropped()
             # 후기 글에서 확인된 사진은 이름이 같은 다른 가게 사진일 걱정이 없어 앞에 둡니다.
             verified = verified_review_images(place, _image_queries(place.name, place.address)[0], MAX_CANDIDATES)
             try:
