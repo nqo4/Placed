@@ -315,6 +315,10 @@ class SearchSpacingAndMenuTests(TestCase):
         self.assertEqual([s['ad_probability'] for s in scored], [10, 90, 30, 80])
         self.assertEqual(mock_analyze.call_count, 4)
 
+    def test_save_place_images_skips_links_longer_than_db_field(self):
+        saved = naver_miner.save_place_images(self.korean, ['http://img/ok.jpg', 'http://img/' + 'x' * 600])
+        self.assertEqual(saved, 1)
+
     def test_menu_keywords_ignore_ad_posts(self):
         self.assertEqual(list(self.cafe.keywords.filter(keyword_type='menu').values_list('keyword', flat=True)), ['케이크'])
 

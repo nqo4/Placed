@@ -373,7 +373,10 @@ def save_place_images(place, links):
     섞여 들어온 것일 가능성이 커서 건너뜁니다. 저장한 개수를 돌려줍니다.
     """
     saved = 0
+    max_len = PlaceImage._meta.get_field('image_url').max_length
     for link in links:
+        if len(link) > max_len:  # DB 칸보다 긴 주소(추적 파라미터가 붙은 사진 등)는 저장할 수 없어 건너뜀
+            continue
         if PlaceImage.objects.filter(image_url=link).exclude(place=place).exists():
             continue
         _, created = PlaceImage.objects.get_or_create(place=place, image_url=link)
