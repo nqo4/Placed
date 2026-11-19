@@ -1983,6 +1983,19 @@ class FrontendCompatibilityTests(APITestCase):
         self.client.force_authenticate(user=self.staff)
         self.assertEqual(self.client.get(url).status_code, status.HTTP_200_OK)
 
+    def test_only_owner_can_delete_inquiry(self):
+        inquiry = Inquiry.objects.create(user=self.user, category='etc', message='내 문의')
+        other = User.objects.create_user(username='other01', password='StrongPass123')
+        url = reverse('inquiry-detail', args=[inquiry.id])
+
+        self.assertEqual(self.client.delete(url).status_code, status.HTTP_401_UNAUTHORIZED)
+        for who in (other, self.staff):  # 다른 사용자·관리자는 남의 문의를 지울 수 없음
+            self.client.force_authenticate(user=who)
+            self.assertEqual(self.client.delete(url).status_code, status.HTTP_404_NOT_FOUND)
+        self.client.force_authenticate(user=self.user)
+        self.assertEqual(self.client.delete(url).status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Inquiry.objects.filter(id=inquiry.id).exists())
+
     def test_user_cannot_set_answer_when_creating_inquiry(self):
         self.client.force_authenticate(user=self.user)
         res = self.client.post(reverse('create-inquiry'), {'category': 'etc', 'message': '문의', 'answer': '셀프 답변'})

@@ -183,13 +183,14 @@ class MyInquiriesView(generics.ListAPIView):
     def get_queryset(self):
         return Inquiry.objects.filter(user=self.request.user)
 
-class InquiryDetailView(generics.RetrieveAPIView):
+class InquiryDetailView(generics.RetrieveDestroyAPIView):
+    """GET: 내 문의(관리자는 모든 문의) 조회. DELETE: 본인이 쓴 문의만 삭제(관리자도 남의 문의는 삭제 불가)."""
     serializer_class = InquirySerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         # 다른 사람의 문의는 존재 여부도 드러나지 않도록 404로 처리합니다.
-        if self.request.user.is_staff:
+        if self.request.user.is_staff and self.request.method != 'DELETE':
             return Inquiry.objects.all()
         return Inquiry.objects.filter(user=self.request.user)
 
