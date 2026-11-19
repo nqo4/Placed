@@ -256,6 +256,91 @@
   float: right;
 }
 
+/* 문의 답변 */
+.badge-wait {
+  background-color: #fff4e5;
+  color: #b26a00;
+}
+
+.inquiry-meta {
+  margin: 4px 0 12px;
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.inquiry-message {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.answer-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #555;
+}
+
+.answer-input {
+  width: 100%;
+  min-height: 110px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.answer-input:focus {
+  border-color: #2a7fff;
+}
+
+.answer-error {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  color: #dc3545;
+}
+
+.answer-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.answer-cancel,
+.answer-save {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.answer-cancel {
+  background: #f1f5f9;
+  color: #555;
+}
+
+.answer-save {
+  background: #2a7fff;
+  color: #fff;
+}
+
+.answer-save:disabled {
+  background: #b9d3ff;
+  cursor: default;
+}
+
 /* 모바일 */
 @media (max-width: 768px) {
   .admin-layout {

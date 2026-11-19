@@ -163,6 +163,7 @@ function PlaceDetail() {
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [reviewNotice, setReviewNotice] = useState(null);
+  const [reviewError, setReviewError] = useState("");
   const [placeData, setPlaceData] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -199,6 +200,7 @@ function PlaceDetail() {
     const content = reviewText.trim();
     if (!content || submitting) return;
     setSubmitting(true);
+    setReviewError("");
     try {
       const created = await createReview(id, content);
       setReviewText("");
@@ -211,7 +213,7 @@ function PlaceDetail() {
       const res = await getReviewsByPlace(id);
       setReviews(res.data);
     } catch {
-      alert("후기 등록에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      setReviewError("후기 등록에 실패했어요. 잠시 후 다시 시도해주세요.");
     } finally {
       setSubmitting(false);
     }
@@ -307,6 +309,7 @@ function PlaceDetail() {
                   maxLength={1000}
                   autoFocus
                 />
+                {reviewError && <p className="review-error">{reviewError}</p>}
                 <div className="review-form-buttons">
                   <button type="button" className="secondary" onClick={() => setShowForm(false)}>
                     취소

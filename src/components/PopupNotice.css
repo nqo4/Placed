@@ -1,0 +1,66 @@
+/* 목원대 사이트처럼 왼쪽 위, 뒤 화면은 그대로 보이게 */
+.popup-layer {
+  position: fixed;
+  top: 84px;
+  left: 72px;
+  z-index: 3000;
+}
+
+.popup-box {
+  width: 360px;
+  max-height: calc(100vh - 104px);
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+}
+
+.popup-image {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.popup-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.popup-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f1f1f1;
+  flex-shrink: 0;
+}
+
+.popup-actions button {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.85rem;
+  color: #555;
+  cursor: pointer;
+}
+
+.popup-actions .popup-close {
+  font-weight: 700;
+  color: #222;
+}
+
+/* 모바일: 위쪽에 화면 폭에 맞게 */
+@media (max-width: 768px) {
+  .popup-layer {
+    top: 64px;
+    left: 12px;
+    right: 12px;
+  }
+
+  .popup-box {
+    width: auto;
+    max-height: calc(100vh - 80px);
+  }
+}

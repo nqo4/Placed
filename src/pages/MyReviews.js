@@ -11,6 +11,7 @@ function MyReviews() {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(isLoggedIn);
   const [error, setError] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -24,7 +25,8 @@ function MyReviews() {
     if (!window.confirm("리뷰를 삭제하시겠습니까?")) return;
     deleteReview(id)
       .then(() => setReviews((prev) => prev.filter((r) => r.id !== id)))
-      .catch(() => alert("삭제에 실패했습니다. 잠시 후 다시 시도해주세요."));
+      .then(() => setDeleteError(""))
+      .catch(() => setDeleteError("삭제에 실패했어요. 잠시 후 다시 시도해주세요."));
   };
 
   const renderBody = () => {
@@ -43,6 +45,8 @@ function MyReviews() {
     }
 
     return (
+      <>
+      {deleteError && <p className="form-notice error">{deleteError}</p>}
       <ul className="review-list">
         {reviews.map((r) => (
           <li key={r.id} className="review-item">
@@ -58,6 +62,7 @@ function MyReviews() {
           </li>
         ))}
       </ul>
+      </>
     );
   };
 

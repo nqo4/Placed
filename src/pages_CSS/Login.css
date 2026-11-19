@@ -104,6 +104,21 @@
   text-decoration: underline;
 }
 
+.login-error {
+  margin: -6px 0 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff1f0;
+  color: #dc3545;
+  font-size: 14px;
+  text-align: left;
+}
+
+.login-box button:disabled {
+  background-color: #8bbcff;
+  cursor: default;
+}
+
 /* 모바일 */
 @media (max-width: 768px) {
   .login-container {

@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import Footer from "../components/Footer";
+import PopupNotice from "../components/PopupNotice";
 import "../pages_CSS/MainGuest.css";
 
 function MainGuest() {
@@ -8,6 +9,7 @@ function MainGuest() {
 
   return (
     <div className="guest-page">
+      <PopupNotice page="guest" />
      
       <header className="guest-header">
         <div className="logo" onClick={() => navigate("/")}>

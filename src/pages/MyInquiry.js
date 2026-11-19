@@ -5,6 +5,8 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "../pages_CSS/MyInquiry.css";
 
+const CATEGORY_LABEL = { account: "계정 문의", service: "서비스 이용", etc: "기타" };
+
 function MyInquiry() {
   const navigate = useNavigate();
   const [inquiries, setInquiries] = useState([]);
@@ -47,9 +49,14 @@ function MyInquiry() {
                 className="inquiry-item"
                 onClick={() => navigate(`/inquiry/${item.id}`)}
               >
-                <p><strong>유형:</strong> {item.category}</p>
-                <p><strong>내용:</strong> {item.message}</p>
-                <p className="date">{item.created_at}</p>
+                <div className="inquiry-item-top">
+                  <span className="inquiry-category">{CATEGORY_LABEL[item.category] || item.category}</span>
+                  <span className={`inquiry-status ${item.answer ? "done" : "wait"}`}>
+                    {item.answer ? "답변 완료" : "답변 대기"}
+                  </span>
+                </div>
+                <p className="inquiry-text">{item.message}</p>
+                <p className="date">{item.created_at?.slice(0, 10)}</p>
               </li>
             ))}
           </ul>

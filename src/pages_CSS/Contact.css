@@ -82,6 +82,40 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+.contact-form .form-notice {
+  width: 100%;
+  max-width: 360px;
+  box-sizing: border-box;
+}
+
+.form-notice {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.form-notice.success {
+  background: #e8f7ee;
+  color: #1f9d55;
+}
+
+.form-notice.error {
+  background: #fff1f0;
+  color: #dc3545;
+}
+
+.inquiry-history-link {
+  margin-top: 18px;
+  border: none;
+  background: none;
+  color: #2a7fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 /* 모바일 */
 @media (max-width: 768px) {
   .contact-section {

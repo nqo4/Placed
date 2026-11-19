@@ -6,3 +6,4 @@ export const getAdminPlaces = () => API.get("/api/admin/places/");
 export const getAdminAnalysis = () => API.get("/api/admin/analysis/");
 export const getAdminReviews = () => API.get("/api/admin/reviews/");
 export const getAdminInquiries = () => API.get("/api/admin/inquiries/");
+export const answerInquiry = (id, answer) => API.patch(`/api/admin/inquiries/${id}/answer/`, { answer });

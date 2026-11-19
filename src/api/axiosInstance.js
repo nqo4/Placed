@@ -1,5 +1,6 @@
 import axios from "axios";
 import { API_ROUTES, BASE_URL } from "../config";
+import { setFlash } from "../components/FlashMessage";
 
 const API = axios.create({
   baseURL: BASE_URL,
@@ -65,7 +66,7 @@ API.interceptors.response.use(
     }
 
     clearAuth();
-    alert("로그인이 만료되었습니다. 다시 로그인해주세요.");
+    setFlash("로그인이 만료되었어요. 다시 로그인해주세요.", "info");
     window.location.href = "/login";
     return Promise.reject(error);
   }
