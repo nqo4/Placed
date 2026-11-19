@@ -16,10 +16,12 @@ import Admin from "./pages/Admin";
 import AdCheck from "./pages/AdCheck";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import FlashMessage from "./components/FlashMessage";
 
 function App() {
   return (
     <Router>
+      <FlashMessage />
       <Routes>
         <Route path="/" element={<MainGuest />} />
         <Route path="/login" element={<Login />} />

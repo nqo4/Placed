@@ -5,6 +5,7 @@ import Footer from "../components/Footer";
 import "../pages_CSS/MyPage.css";
 import { clearAuth } from "../api/axiosInstance";
 import { getProfile, updateName, changePassword, deleteAccount } from "../api/userAPI";
+import { setFlash } from "../components/FlashMessage";
 
 // 받침 있으면 첫 번째, 없으면 두 번째 조사
 const josa = (word, withFinal, withoutFinal) => {
@@ -66,7 +67,7 @@ function MyPage() {
     try {
       await deleteAccount(withdrawPassword);
       clearAuth();
-      alert("탈퇴가 완료되었습니다.");
+      setFlash("탈퇴가 완료되었어요.", "success");
       navigate("/");
     } catch (err) {
       setWithdrawError(err.response?.data?.message || "탈퇴에 실패했어요. 잠시 후 다시 시도해주세요.");
@@ -147,7 +148,7 @@ function MyPage() {
             <button className="menu-btn active">내 계정 관리</button>
             <button className="menu-btn" onClick={() => navigate("/reviews")}>리뷰 관리</button>
             <button className="menu-btn" onClick={() => navigate("/my-places")}>최근 본 장소</button>
-            <button className="menu-btn" onClick={() => navigate("/contact")}>문의하기</button>
+            <button className="menu-btn" onClick={() => navigate("/inquiries")}>내 문의</button>
             <div className="sidebar-divider"></div>
             <button className="menu-btn logout-btn" onClick={handleLogout}>
               로그아웃

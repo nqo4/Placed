@@ -1,0 +1,31 @@
+.flash-message {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  max-width: calc(100% - 32px);
+  padding: 12px 22px;
+  border-radius: 30px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.flash-message.info {
+  background: #333;
+  color: #fff;
+}
+
+.flash-message.success {
+  background: #28a745;
+  color: #fff;
+}
+
+.flash-message.error {
+  background: #dc3545;
+  color: #fff;
+}

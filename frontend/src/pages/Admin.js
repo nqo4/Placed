@@ -4,10 +4,11 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import {
   getAdminUsers, getAdminPlaces, getAdminAnalysis,
-  getAdminReviews, getAdminInquiries
+  getAdminReviews, getAdminInquiries, answerInquiry
 } from "../api/adminAPI";
 import "../pages_CSS/Admin.css";
 import { clearAuth } from "../api/axiosInstance";
+import { setFlash } from "../components/FlashMessage";
 
 const CATEGORY_LABEL = { account: "계정 문의", service: "서비스 이용", etc: "기타" };
 
@@ -21,11 +22,15 @@ function Admin() {
   const [inquiries, setInquiries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedAnalysis, setSelectedAnalysis] = useState(null);
+  const [selectedInquiry, setSelectedInquiry] = useState(null);
+  const [answerText, setAnswerText] = useState("");
+  const [answerSaving, setAnswerSaving] = useState(false);
+  const [answerError, setAnswerError] = useState("");
 
   useEffect(() => {
     const isAdmin = localStorage.getItem("is_admin");
     if (isAdmin !== "true") {
-      alert("관리자 권한이 없습니다.");
+      setFlash("관리자 권한이 없어요.", "error");
       navigate("/main");
       return;
     }
@@ -55,7 +60,7 @@ function Admin() {
     { label: "총 회원 수", value: users.length, color: "#2a7fff", tabKey: "users" },
     { label: "총 장소 수", value: places.length, color: "#28a745", tabKey: "places" },
     { label: "AI 분석 건수", value: analyses.length, color: "#fd7e14", tabKey: "analysis" },
-    { label: "미답변 문의", value: inquiries.length, color: "#dc3545", tabKey: "inquiries" },
+    { label: "미답변 문의", value: inquiries.filter((q) => !q.answer).length, color: "#dc3545", tabKey: "inquiries" },
   ];
 
   const menuItems = [
@@ -66,6 +71,33 @@ function Admin() {
     { key: "inquiries", label: "문의 관리" },
   ];
 
+  const openInquiry = (q) => {
+    setSelectedInquiry(q);
+    setAnswerText(q.answer || "");
+    setAnswerError("");
+  };
+
+  const handleAnswerSave = async () => {
+    if (!answerText.trim()) {
+      setAnswerError("답변 내용을 입력해주세요.");
+      return;
+    }
+    setAnswerSaving(true);
+    try {
+      const res = await answerInquiry(selectedInquiry.id, answerText.trim());
+      setInquiries((prev) => prev.map((q) => (q.id === res.data.id ? res.data : q)));
+      setSelectedInquiry(null);
+    } catch {
+      setAnswerError("답변 저장에 실패했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setAnswerSaving(false);
+    }
+  };
+
+  const statusBadge = (q) => (
+    <span className={`badge ${q.answer ? "badge-ok" : "badge-wait"}`}>{q.answer ? "답변 완료" : "답변 대기"}</span>
+  );
+
   if (loading) return <div className="loading-box">데이터 불러오는 중...</div>;
 
   return (
@@ -73,7 +105,6 @@ function Admin() {
       <Header hideNav />
       <div className="admin-layout">
         <aside className="admin-sidebar">
-          <p className="admin-sidebar-title">관리자 메뉴</p>
           <nav>
             {menuItems.map((item) => (
               <button
@@ -208,15 +239,16 @@ function Admin() {
               <div className="table-scroll">
                 <table className="admin-table">
                   <thead>
-                    <tr><th>번호</th><th>작성자</th><th>카테고리</th><th>내용</th><th>날짜</th></tr>
+                    <tr><th>번호</th><th>작성자</th><th>카테고리</th><th>내용</th><th>상태</th><th>날짜</th></tr>
                   </thead>
                   <tbody>
                     {inquiries.map((q) => (
-                      <tr key={q.id}>
+                      <tr key={q.id} onClick={() => openInquiry(q)} style={{ cursor: "pointer" }}>
                         <td>{q.id}</td>
                         <td>{q.user?.username}</td>
                         <td><span className="badge">{CATEGORY_LABEL[q.category] || q.category}</span></td>
                         <td className="td-content">{q.message}</td>
+                        <td>{statusBadge(q)}</td>
                         <td>{q.created_at?.slice(0, 10)}</td>
                       </tr>
                     ))}
@@ -241,6 +273,32 @@ function Admin() {
             </div>
             <p style={{ fontSize: "0.9rem", lineHeight: "1.7", color: "#333" }}>{selectedAnalysis.ai_summary}</p>
             <button className="modal-close-btn" onClick={() => setSelectedAnalysis(null)}>닫기</button>
+          </div>
+        </div>
+      )}
+
+      {selectedInquiry && (
+        <div className="modal-overlay" onClick={() => setSelectedInquiry(null)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <h3>문의 #{selectedInquiry.id}</h3>
+            <p className="inquiry-meta">
+              {selectedInquiry.user?.username} · {CATEGORY_LABEL[selectedInquiry.category] || selectedInquiry.category} · {selectedInquiry.created_at?.slice(0, 10)} {statusBadge(selectedInquiry)}
+            </p>
+            <p className="inquiry-message">{selectedInquiry.message}</p>
+            <label className="answer-label">답변</label>
+            <textarea
+              className="answer-input"
+              value={answerText}
+              onChange={(e) => { setAnswerText(e.target.value); setAnswerError(""); }}
+              placeholder="사용자에게 보낼 답변을 입력하세요."
+            />
+            {answerError && <p className="answer-error">{answerError}</p>}
+            <div className="answer-buttons">
+              <button className="answer-cancel" onClick={() => setSelectedInquiry(null)}>닫기</button>
+              <button className="answer-save" onClick={handleAnswerSave} disabled={answerSaving}>
+                {answerSaving ? "저장 중..." : selectedInquiry.answer ? "답변 수정" : "답변 등록"}
+              </button>
+            </div>
           </div>
         </div>
       )}

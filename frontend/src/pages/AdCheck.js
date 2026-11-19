@@ -8,23 +8,24 @@ function AdCheck() {
     const [content, setContent] = useState("");
     const [result, setResult] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
 
     const handleAnalyze = async () => {
         if (!content.trim()) {
-            alert("분석할 텍스트를 입력해주세요.");
+            setError("분석할 텍스트를 입력해주세요.");
             return;
         }
 
         setLoading(true);
         setResult(null);
+        setError("");
 
         try {
             // name은 임의로 현재 시간이나 'User Input'으로 설정
             const res = await analyzeReview("User Input", content);
             setResult(res.data);
         } catch (err) {
-            console.error(err);
-            alert("분석 중 오류가 발생했습니다.");
+            setError("분석에 실패했어요. 잠시 후 다시 시도해주세요.");
         } finally {
             setLoading(false);
         }
@@ -52,8 +53,10 @@ function AdCheck() {
                     className="check-input"
                     placeholder="여기에 리뷰 내용을 입력하세요..."
                     value={content}
-                    onChange={(e) => setContent(e.target.value)}
+                    onChange={(e) => { setContent(e.target.value); setError(""); }}
                 />
+
+                {error && <p className="form-notice error">{error}</p>}
 
                 <button className="analyze-btn" onClick={handleAnalyze} disabled={loading}>
                     {loading ? "분석 중..." : "판독 시작"}
@@ -67,9 +70,9 @@ function AdCheck() {
                         </p>
                         <p className="summary">{result.reason}</p>
                         {result.is_ad ? (
-                            <div className="badge warn-badge">🚨 광고 의심</div>
+                            <div className="result-badge warn-badge">🚨 광고 의심</div>
                         ) : (
-                            <div className="badge organic-badge">✅ 실제 후기</div>
+                            <div className="result-badge organic-badge">✅ 실제 후기</div>
                         )}
                         <p className="model-info">Model used: {result.model_used}</p>
                     </div>

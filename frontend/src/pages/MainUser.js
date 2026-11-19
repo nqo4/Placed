@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Header from "../components/Header";
+import PopupNotice from "../components/PopupNotice";
 import { getDailyRecommendations } from "../api/searchAPI";
 import "../pages_CSS/MainUser.css";
 
@@ -56,6 +57,7 @@ function MainUser() {
 
   return (
     <div className="user-page">
+      <PopupNotice page="main" />
       <Header />
       <section className="welcome">
         <h1>오늘은 어디 가볼까요?</h1>

@@ -495,6 +495,15 @@
   }
 }
 
+.review-error {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #fff1f0;
+  color: #dc3545;
+  font-size: 0.85rem;
+}
+
 /* 모바일 */
 @media (max-width: 768px) {
   .detail-container {
