@@ -297,6 +297,15 @@ class SearchSpacingAndMenuTests(TestCase):
         self.assertEqual(self.names('케이크'), ['하레하레'])
         self.assertEqual(self.names('둔산동 짬뽕 맛집'), ['니짬내짬', '자유대반점'])  # "맛집"은 뺌
 
+    def test_duplicate_place_ignores_trailing_address_text_but_not_other_branches(self):
+        Place.objects.create(name='라무킷도', address='대전광역시 중구 보문로260번길 64 3층')
+        Place.objects.create(name='태평소국밥', address='대전광역시 유성구 온천동로65번길 50')
+        dup = naver_miner._is_duplicate_place
+        self.assertTrue(dup('라무킷도', '대전광역시 중구 보문로260번길 64 3층 라무킷도 대흥동카페'))
+        self.assertFalse(dup('라무킷도', '대전광역시 중구 보문로260번길 6'))         # 번지가 다름
+        self.assertFalse(dup('태평소국밥', '대전광역시 서구 둔산로31번길 52'))      # 다른 지점
+        self.assertFalse(dup('다른가게', '대전광역시 중구 보문로260번길 64 3층'))   # 같은 건물 다른 가게
+
     def test_menu_keywords_ignore_ad_posts(self):
         self.assertEqual(list(self.cafe.keywords.filter(keyword_type='menu').values_list('keyword', flat=True)), ['케이크'])
 

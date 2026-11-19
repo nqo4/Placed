@@ -422,8 +422,19 @@ def _is_duplicate_place(name, address):
     (동명이점, 예: 프랜차이즈 카페)까지 "이미 등록됨"으로 잘못 건너뛰게 됩니다. 반대로
     주소만으로 판단하면 한 건물/상가에 입점한 서로 다른 매장을 같은 곳으로 오인할 수
     있습니다. 두 값이 모두 일치할 때만 같은 매장으로 간주합니다.
+
+    네이버는 같은 가게 주소를 "…64 3층"과 "…64 3층 라무킷도 대흥동카페"처럼 뒤에 글자를 덧붙여
+    주기도 해서, 띄어쓰기 단위로 한쪽 주소가 다른 쪽 주소의 앞부분이면 같은 주소로 봅니다.
+    ("…번길 3"과 "…번길 36"은 마지막 단어가 달라 다른 주소입니다.)
     """
-    return Place.objects.filter(name=name, address=address).exists()
+    return any(same_address(address, existing)
+               for existing in Place.objects.filter(name=name).values_list('address', flat=True))
+
+
+def same_address(a, b):
+    a_tokens, b_tokens = (a or '').split(), (b or '').split()
+    shorter, longer = sorted((a_tokens, b_tokens), key=len)
+    return bool(shorter) and longer[:len(shorter)] == shorter
 
 
 def _fetch_local_places(search_keyword, headers, max_results, request_interval):
