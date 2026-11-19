@@ -315,6 +315,12 @@ class SearchSpacingAndMenuTests(TestCase):
         self.assertEqual([s['ad_probability'] for s in scored], [10, 90, 30, 80])
         self.assertEqual(mock_analyze.call_count, 4)
 
+    def test_snack_dish_finds_snack_bar_even_without_review_mention(self):
+        snack = Place.objects.create(name='우리동네분식', address='대전 서구 둔산동', category='분식>종합분식')
+        PlaceKeyword.objects.create(place=snack, keyword_type='category', keyword='분식')
+        self.assertIn('우리동네분식', self.names('떡볶이'))
+        self.assertNotIn('한밭식당', self.names('떡볶이'))
+
     def test_save_place_images_skips_links_longer_than_db_field(self):
         saved = naver_miner.save_place_images(self.korean, ['http://img/ok.jpg', 'http://img/' + 'x' * 600])
         self.assertEqual(saved, 1)
